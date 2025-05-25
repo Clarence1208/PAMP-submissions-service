@@ -1,0 +1,24 @@
+# PAMP Submissions Service API Tests
+# Use these HTTP requests to test your FastAPI endpoints
+
+### Health Check
+GET http://127.0.0.1:8001/health/
+Accept: application/json
+
+###
+
+### Liveness Check
+GET http://127.0.0.1:8001/health/liveness
+Accept: application/json
+
+###
+
+### Readiness Check
+GET http://127.0.0.1:8001/health/readiness
+Accept: application/json
+
+###
+
+### Root Endpoint
+GET http://127.0.0.1:8001/
+Accept: application/json

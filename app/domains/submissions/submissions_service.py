@@ -1,0 +1,275 @@
+from typing import List, Optional, Dict, Any
+from uuid import UUID
+from sqlmodel import Session
+from app.domains.submissions.submissions_models import Submission
+from app.domains.submissions.dto.create_submission_dto import CreateSubmissionDto
+from app.domains.submissions.dto.submission_response_dto import SubmissionResponseDto
+from app.domains.submissions.dto.submission_update_dto import SubmissionUpdateDto
+from app.domains.submissions.dto.create_submission_response_dto import CreateSubmissionResponseDto
+from app.domains.submissions.submissions_repository import SubmissionRepository
+from app.domains.submissions.rules.rule_service import RuleService, RuleExecutionResult
+from app.shared.exceptions import ValidationException, NotFoundException
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+class SubmissionService:
+    """Service for submission business logic"""
+    
+    def __init__(self, session: Session):
+        self.repository = SubmissionRepository(session)
+        self.rule_service = RuleService()
+    
+    def create_submission(
+        self, 
+        submission_data: CreateSubmissionDto, 
+        ip_address: Optional[str] = None, 
+        user_agent: Optional[str] = None,
+        allow_duplicates: bool = False,
+        execute_rules: bool = True
+    ) -> CreateSubmissionResponseDto:
+        """Create a new submission with business logic validation"""
+        
+        # Check for duplicate submissions if not allowed
+        if not allow_duplicates:
+            is_duplicate = self.repository.check_duplicate_submission(
+                project_uuid=submission_data.project_uuid,
+                group_uuid=submission_data.group_uuid,
+                project_step=submission_data.project_step,
+                link=submission_data.link
+            )
+            
+            if is_duplicate:
+                raise ValidationException(
+                    "A submission with the same project, group, step, and link already exists"
+                )
+        
+        # Validate business rules
+        self._validate_submission_data(submission_data)
+        
+        # Execute validation rules if specified and requested
+        rule_results = []
+        if execute_rules and submission_data.rules:
+            try:
+                logger.info(f"Executing {len(submission_data.rules)} validation rules")
+                rule_results = self.rule_service.validate_submission(submission_data)
+                
+                # Check if any rules failed
+                failed_rules = [r for r in rule_results if not r.passed]
+                if failed_rules:
+                    # Create structured error response
+                    errors = []
+                    
+                    for failed_rule in failed_rules:
+                        if failed_rule.error_details:
+                            # Use structured error data from the rule
+                            error_info = failed_rule.error_details.copy()
+                            error_info["rule_name"] = failed_rule.rule_name
+                            error_info["rule_params"] = failed_rule.params
+                            errors.append(error_info)
+                        else:
+                            # Fallback for simple string errors
+                            errors.append({
+                                "code": "ruleValidationFailed",
+                                "rule_name": failed_rule.rule_name,
+                                "rule_params": failed_rule.params,
+                                "message": failed_rule.message
+                            })
+                    
+                    # Create detailed error response
+                    error_response = {
+                        "validation_failed": True,
+                        "failed_rule_count": len(failed_rules),
+                        "total_rule_count": len(rule_results),
+                        "errors": errors,
+                        "summary": f"Submission validation failed: {len(failed_rules)} of {len(rule_results)} rules failed"
+                    }
+                    
+                    # Log the detailed failure information
+                    logger.warning(f"Rule validation failed: {error_response}")
+                    
+                    # Raise structured validation exception
+                    raise ValidationException(
+                        f"Submission validation failed: {len(failed_rules)} of {len(rule_results)} rules failed",
+                        details=error_response
+                    )
+                
+                logger.info("All validation rules passed successfully")
+                
+            except ValidationException:
+                # Re-raise validation exceptions as-is
+                raise
+            except Exception as e:
+                # Log unexpected errors but don't fail the submission
+                logger.error(f"Unexpected error during rule execution: {str(e)}")
+                raise ValidationException(f"Rule execution failed: {str(e)}", details={
+                    "error_type": type(e).__name__,
+                    "error_message": str(e)
+                })
+        
+        # Create the submission
+        submission = self.repository.create(
+            submission_data=submission_data,
+            ip_address=ip_address,
+            user_agent=user_agent
+        )
+        
+        # Add rule execution results to the response if any were executed
+        response_data = {
+            "success": True,
+            "message": "Submission created successfully",
+            "submission_id": submission.id,
+            "data": SubmissionResponseDto.model_validate(submission.model_dump())
+        }
+        
+        if rule_results:
+            response_data["rule_results"] = [
+                {
+                    "rule_name": r.rule_name,
+                    "passed": r.passed,
+                    "message": r.message,
+                    "params": r.params
+                }
+                for r in rule_results
+            ]
+        
+        return CreateSubmissionResponseDto(**response_data)
+    
+    def get_submission(self, submission_id: UUID) -> CreateSubmissionResponseDto:
+        """Get a submission by ID"""
+        submission = self.repository.get_by_id(submission_id)
+        
+        if not submission:
+            raise NotFoundException(f"Submission with ID {submission_id} not found")
+        
+        return CreateSubmissionResponseDto(
+            success=True,
+            message="Submission retrieved successfully",
+            submission_id=submission.id,
+            data=SubmissionResponseDto.model_validate(submission.model_dump())
+        )
+    
+    def get_submissions_by_project_and_group(
+        self, 
+        project_uuid: UUID, 
+        group_uuid: UUID
+    ) -> List[SubmissionResponseDto]:
+        """Get all submissions for a specific project and group"""
+        submissions = self.repository.get_by_project_and_group(project_uuid, group_uuid)
+        return [SubmissionResponseDto.model_validate(sub.model_dump()) for sub in submissions]
+    
+    def get_submissions_by_project_step(
+        self, 
+        project_uuid: UUID, 
+        project_step: str
+    ) -> List[SubmissionResponseDto]:
+        """Get all submissions for a specific project step"""
+        submissions = self.repository.get_by_project_step(project_uuid, project_step)
+        return [SubmissionResponseDto.model_validate(sub.model_dump()) for sub in submissions]
+    
+    def update_submission(
+        self, 
+        submission_id: UUID, 
+        update_data: SubmissionUpdateDto
+    ) -> CreateSubmissionResponseDto:
+        """Update a submission"""
+        submission = self.repository.update(submission_id, update_data)
+        
+        return CreateSubmissionResponseDto(
+            success=True,
+            message="Submission updated successfully",
+            submission_id=submission.id,
+            data=SubmissionResponseDto.model_validate(submission.model_dump())
+        )
+    
+    def delete_submission(self, submission_id: UUID) -> CreateSubmissionResponseDto:
+        """Delete a submission"""
+        success = self.repository.delete(submission_id)
+        
+        return CreateSubmissionResponseDto(
+            success=success,
+            message="Submission deleted successfully",
+            submission_id=submission_id
+        )
+    
+    def list_submissions(self, skip: int = 0, limit: int = 100) -> List[SubmissionResponseDto]:
+        """List all submissions with pagination"""
+        if limit > 1000:  # Prevent excessive data retrieval
+            limit = 1000
+        
+        submissions = self.repository.list_all(skip=skip, limit=limit)
+        return [SubmissionResponseDto.model_validate(sub.model_dump()) for sub in submissions]
+    
+    def get_submission_statistics(
+        self, 
+        project_uuid: UUID, 
+        group_uuid: UUID
+    ) -> dict:
+        """Get submission statistics for a project and group"""
+        submissions = self.repository.get_by_project_and_group(project_uuid, group_uuid)
+        
+        total_count = len(submissions)
+        status_counts = {}
+        step_counts = {}
+        link_type_counts = {}
+        
+        for submission in submissions:
+            # Count by status
+            status = submission.status
+            status_counts[status] = status_counts.get(status, 0) + 1
+            
+            # Count by step
+            step = submission.project_step
+            step_counts[step] = step_counts.get(step, 0) + 1
+            
+            # Count by link type
+            link_type = submission.link_type or "unknown"
+            link_type_counts[link_type] = link_type_counts.get(link_type, 0) + 1
+        
+        return {
+            "total_submissions": total_count,
+            "status_breakdown": status_counts,
+            "step_breakdown": step_counts,
+            "link_type_breakdown": link_type_counts,
+            "latest_submission": submissions[0].upload_date_time.isoformat() if submissions else None
+        }
+    
+    def _validate_submission_data(self, submission_data: CreateSubmissionDto) -> None:
+        """Validate submission data according to business rules"""
+        
+        # Validate link format based on type
+        link = submission_data.link.lower()
+        
+        if link.startswith('s3://'):
+            # Basic S3 path validation
+            if len(link.split('/')) < 4:  # s3://bucket/path
+                raise ValidationException("S3 link must include bucket and path")
+        
+        elif 'github.com' in link:
+            # GitHub repository validation
+            if '/tree/' in link or '/blob/' in link:
+                raise ValidationException("GitHub link should point to the repository root, not specific files or branches")
+            if not link.endswith('.git') and '/archive/' not in link:
+                # Allow both .git URLs and archive URLs
+                pass
+        
+        elif 'gitlab.com' in link:
+            # GitLab repository validation
+            if '/tree/' in link or '/blob/' in link:
+                raise ValidationException("GitLab link should point to the repository root, not specific files or branches")
+        
+        # Validate file size if provided
+        if submission_data.file_size_bytes is not None:
+            max_size = 1024 * 1024 * 1024 * 5  # 5GB limit
+            if submission_data.file_size_bytes > max_size:
+                raise ValidationException("File size cannot exceed 5GB")
+        
+        # Validate file count if provided
+        if submission_data.file_count is not None:
+            if submission_data.file_count > 10000:
+                raise ValidationException("File count cannot exceed 10,000 files")
+        
+        # Validate description length
+        if submission_data.description and len(submission_data.description) > 1000:
+            raise ValidationException("Description cannot exceed 1000 characters") 
