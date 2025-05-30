@@ -1,0 +1,128 @@
+# Submissions API Tests
+# Use these HTTP requests to test your submissions endpoints
+
+### Create a new submission with S3 link
+POST http://127.0.0.1:8001/submissions/
+Content-Type: application/json
+
+{
+  "link": "s3://my-bucket/submissions/project1/group1/step1.zip",
+  "project_uuid": "123e4567-e89b-12d3-a456-426614174000",
+  "group_uuid": "987fcdeb-51a2-43d1-9f12-345678901234",
+  "project_step": "step_1",
+  "description": "Initial submission for step 1",
+  "submitted_by": "John Doe",
+  "file_size_bytes": 1024000,
+  "file_count": 15
+}
+
+###
+
+### Create a new submission with GitHub link
+POST http://127.0.0.1:8001/submissions/
+Content-Type: application/json
+
+{
+  "link": "https://github.com/user/project-repo",
+  "project_uuid": "123e4567-e89b-12d3-a456-426614174000",
+  "group_uuid": "987fcdeb-51a2-43d1-9f12-345678901234",
+  "project_step": "step_2",
+  "description": "GitHub repository submission",
+  "submitted_by": "Jane Smith"
+}
+
+###
+
+### Create a new submission with GitLab link
+POST http://127.0.0.1:8001/submissions/
+Content-Type: application/json
+
+{
+  "link": "https://gitlab.com/user/project-repo",
+  "project_uuid": "123e4567-e89b-12d3-a456-426614174000",
+  "group_uuid": "987fcdeb-51a2-43d1-9f12-345678901234",
+  "project_step": "final",
+  "description": "Final project submission",
+  "submitted_by": "Bob Johnson"
+}
+
+###
+
+### Get all submissions
+GET http://127.0.0.1:8001/submissions/
+Accept: application/json
+
+###
+
+### Get submissions by project and group
+GET http://127.0.0.1:8001/submissions/project/123e4567-e89b-12d3-a456-426614174000/group/987fcdeb-51a2-43d1-9f12-345678901234
+Accept: application/json
+
+###
+
+### Get submissions by project step
+GET http://127.0.0.1:8001/submissions/project/123e4567-e89b-12d3-a456-426614174000/step/step_1
+Accept: application/json
+
+###
+
+### Get submission statistics
+GET http://127.0.0.1:8001/submissions/project/123e4567-e89b-12d3-a456-426614174000/group/987fcdeb-51a2-43d1-9f12-345678901234/statistics
+Accept: application/json
+
+###
+
+### Get a specific submission (replace with actual ID)
+GET http://127.0.0.1:8001/submissions/123e4567-e89b-12d3-a456-426614174000
+Accept: application/json
+
+###
+
+### Update a submission (replace with actual ID)
+PUT http://127.0.0.1:8001/submissions/123e4567-e89b-12d3-a456-426614174000
+Content-Type: application/json
+
+{
+  "description": "Updated description",
+  "status": "completed",
+  "file_size_bytes": 2048000
+}
+
+###
+
+### Delete a submission (replace with actual ID)
+DELETE http://127.0.0.1:8001/submissions/123e4567-e89b-12d3-a456-426614174000
+
+###
+
+### Submissions health check
+GET http://127.0.0.1:8001/submissions/health/check
+Accept: application/json
+
+###
+
+### Test duplicate submission (should fail)
+POST http://127.0.0.1:8001/submissions/
+Content-Type: application/json
+
+{
+  "link": "s3://my-bucket/submissions/project1/group1/step1.zip",
+  "project_uuid": "123e4567-e89b-12d3-a456-426614174000",
+  "group_uuid": "987fcdeb-51a2-43d1-9f12-345678901234",
+  "project_step": "step_1",
+  "description": "Duplicate submission test"
+}
+
+###
+
+### Test duplicate submission with allow_duplicates=true
+POST http://127.0.0.1:8001/submissions/?allow_duplicates=true
+Content-Type: application/json
+
+{
+  "link": "s3://my-bucket/submissions/project1/group1/step1.zip",
+  "project_uuid": "123e4567-e89b-12d3-a456-426614174000",
+  "group_uuid": "987fcdeb-51a2-43d1-9f12-345678901234",
+  "project_step": "step_1",
+  "description": "Allowed duplicate submission"
+} 
