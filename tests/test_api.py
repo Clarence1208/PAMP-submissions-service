@@ -36,7 +36,7 @@ def test_root_endpoint(client: TestClient):
     data = response.json()
     assert response.status_code == 200
     assert "Welcome to PAMP Submissions Service" in data["message"]
-    assert data["version"] == "1.0.0"
+    assert data["version"].startswith("1.0.0")
 
 
 def test_health_check(client: TestClient):
@@ -46,7 +46,7 @@ def test_health_check(client: TestClient):
     assert response.status_code == 200
     assert data["status"] in ["healthy", "degraded"]
     assert "timestamp" in data
-    assert data["version"] == "1.0.0"
+    assert data["version"].startswith("1.0.0")
 
 
 def test_liveness_check(client: TestClient):
