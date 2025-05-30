@@ -1,17 +1,18 @@
 from datetime import datetime
-from typing import Optional, List, Any
+from typing import Any, List, Optional
 from uuid import UUID
-from pydantic import BaseModel, field_validator, ConfigDict
 
-from app.domains.submissions.submissions_models import ProjectStep, LinkType
+from pydantic import BaseModel, ConfigDict, field_validator
+
 from app.domains.submissions.dto.rule_dto import RuleDto
+from app.domains.submissions.submissions_models import LinkType, ProjectStep
 
 
 class CreateSubmissionDto(BaseModel):
     """DTO for creating a new submission"""
-    
+
     model_config = ConfigDict(
-        # Use enum values in schema instead of enum objects  
+        # Use enum values in schema instead of enum objects
         use_enum_values=True,
         # Include an example in the schema
         json_schema_extra={
@@ -26,24 +27,19 @@ class CreateSubmissionDto(BaseModel):
                 "file_count": 25,
                 "upload_date_time": "2024-01-15T10:30:00Z",
                 "rules": [
-                    {
-                        "name": "max_archive_size",
-                        "params": {
-                            "max_size_mb": 100
-                        }
-                    },
+                    {"name": "max_archive_size", "params": {"max_size_mb": 100}},
                     {
                         "name": "file_presence",
                         "params": {
                             "must_exist": ["README*", "*.md"],
-                            "forbidden": ["*.tmp", "*.log", "*.class", "*.exe"]
-                        }
-                    }
-                ]
+                            "forbidden": ["*.tmp", "*.log", "*.class", "*.exe"],
+                        },
+                    },
+                ],
             }
-        }
+        },
     )
-    
+
     # Required fields
     link: str
     project_uuid: UUID
@@ -61,47 +57,47 @@ class CreateSubmissionDto(BaseModel):
     # Rules as properly typed DTOs for OpenAPI schema
     rules: Optional[List[RuleDto]] = None
 
-    @field_validator('link')
+    @field_validator("link")
     def validate_link(cls, v):
         """Validate that the link is a proper URL or S3 path"""
         if not v:
-            raise ValueError('Link cannot be empty')
+            raise ValueError("Link cannot be empty")
 
         # Basic validation for different link types
         v_lower = v.lower()
-        if v_lower.startswith('s3://'):
+        if v_lower.startswith("s3://"):
             return v
-        elif 'github.com' in v_lower or 'gitlab.com' in v_lower:
-            if not v_lower.startswith('https://'):
-                raise ValueError('GitHub/GitLab links must start with https://')
+        elif "github.com" in v_lower or "gitlab.com" in v_lower:
+            if not v_lower.startswith("https://"):
+                raise ValueError("GitHub/GitLab links must start with https://")
             return v
         else:
-            raise ValueError('Link must be an S3 path (s3://) or a GitHub/GitLab URL')
-    
-    @field_validator('description')
+            raise ValueError("Link must be an S3 path (s3://) or a GitHub/GitLab URL")
+
+    @field_validator("description")
     def validate_description(cls, v):
         """Validate description length"""
         if v is not None and len(v) > 1000:
-            raise ValueError('Description cannot exceed 1000 characters')
+            raise ValueError("Description cannot exceed 1000 characters")
         return v
-    
-    @field_validator('submitted_by')
+
+    @field_validator("submitted_by")
     def validate_submitted_by(cls, v):
         """Validate submitted_by length"""
         if v is not None and len(v) > 255:
-            raise ValueError('Submitted_by cannot exceed 255 characters')
+            raise ValueError("Submitted_by cannot exceed 255 characters")
         return v
-    
-    @field_validator('file_size_bytes')
+
+    @field_validator("file_size_bytes")
     def validate_file_size_bytes(cls, v):
         """Validate file_size_bytes is non-negative"""
         if v is not None and v < 0:
-            raise ValueError('File size must be non-negative')
+            raise ValueError("File size must be non-negative")
         return v
-    
-    @field_validator('file_count')
+
+    @field_validator("file_count")
     def validate_file_count(cls, v):
         """Validate file_count is non-negative"""
         if v is not None and v < 0:
-            raise ValueError('File count must be non-negative')
-        return v 
+            raise ValueError("File count must be non-negative")
+        return v

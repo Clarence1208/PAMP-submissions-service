@@ -34,4 +34,14 @@ yarn-debug.log*
 yarn-error.log*
 
 *.md
-!README.md 
+!README.md
+
+# GitHub workflows
+.github
+
+# Python specific
+*.egg-info
+dist
+build
+.venv
+venv 

@@ -1,4 +1,4 @@
-from abc import abstractmethod, ABC
+from abc import ABC, abstractmethod
 from pathlib import Path
 
 
@@ -7,6 +7,7 @@ class Rule(ABC):
     Abstract base class for submission rules.
     Each sub class must implement an unique name and the validate method.
     """
+
     name: str
 
     def __init__(self, params: dict):

@@ -1,5 +1,6 @@
-from typing import Optional, List, Dict, Any
+from typing import Any, Dict, List, Optional
 from uuid import UUID
+
 from pydantic import BaseModel, ConfigDict
 
 from app.domains.submissions.dto.submission_response_dto import SubmissionResponseDto
@@ -7,7 +8,7 @@ from app.domains.submissions.dto.submission_response_dto import SubmissionRespon
 
 class CreateSubmissionResponseDto(BaseModel):
     """DTO for submission creation operation responses"""
-    
+
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
@@ -20,26 +21,18 @@ class CreateSubmissionResponseDto(BaseModel):
                     "project_uuid": "550e8400-e29b-41d4-a716-446655440001",
                     "group_uuid": "550e8400-e29b-41d4-a716-446655440002",
                     "project_step": "step_1",
-                    "status": "pending"
+                    "status": "pending",
                 },
                 "rule_results": [
-                    {
-                        "rule_name": "max_archive_size",
-                        "passed": True,
-                        "message": "Archive size is within limits"
-                    },
-                    {
-                        "rule_name": "file_presence",
-                        "passed": True,
-                        "message": "All required files are present"
-                    }
-                ]
+                    {"rule_name": "max_archive_size", "passed": True, "message": "Archive size is within limits"},
+                    {"rule_name": "file_presence", "passed": True, "message": "All required files are present"},
+                ],
             }
         }
     )
-    
+
     success: bool
     message: str
     submission_id: Optional[UUID] = None
     data: Optional[SubmissionResponseDto] = None
-    rule_results: Optional[List[Dict[str, Any]]] = None 
+    rule_results: Optional[List[Dict[str, Any]]] = None

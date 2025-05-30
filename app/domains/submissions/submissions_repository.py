@@ -1,11 +1,13 @@
+from datetime import datetime
 from typing import List, Optional
 from uuid import UUID
-from datetime import datetime
+
 from sqlmodel import Session, select
-from app.domains.submissions.submissions_models import Submission
+
 from app.domains.submissions.dto.create_submission_dto import CreateSubmissionDto
 from app.domains.submissions.dto.submission_update_dto import SubmissionUpdateDto
-from app.shared.exceptions import NotFoundException, DatabaseException
+from app.domains.submissions.submissions_models import Submission
+from app.shared.exceptions import DatabaseException, NotFoundException
 
 
 class SubmissionRepository:
@@ -14,8 +16,9 @@ class SubmissionRepository:
     def __init__(self, session: Session):
         self.session = session
 
-    def create(self, submission_data: CreateSubmissionDto, ip_address: Optional[str] = None,
-               user_agent: Optional[str] = None) -> Submission:
+    def create(
+        self, submission_data: CreateSubmissionDto, ip_address: Optional[str] = None, user_agent: Optional[str] = None
+    ) -> Submission:
         """Create a new submission"""
         try:
             # Set upload_date_time to current time if not provided
@@ -24,23 +27,23 @@ class SubmissionRepository:
             # Determine link type based on the link
             link_type = None
             link_lower = submission_data.link.lower()
-            if link_lower.startswith('s3://'):
+            if link_lower.startswith("s3://"):
                 link_type = "s3"
-            elif 'github.com' in link_lower:
+            elif "github.com" in link_lower:
                 link_type = "github"
-            elif 'gitlab.com' in link_lower:
+            elif "gitlab.com" in link_lower:
                 link_type = "gitlab"
 
-
-
             # Create submission instance
-            submission_dict = submission_data.model_dump(exclude={'upload_date_time', 'rules'})
-            submission_dict.update({
-                'upload_date_time': upload_time,
-                'link_type': link_type,
-                'ip_address': ip_address,
-                'user_agent': user_agent
-            })
+            submission_dict = submission_data.model_dump(exclude={"upload_date_time", "rules"})
+            submission_dict.update(
+                {
+                    "upload_date_time": upload_time,
+                    "link_type": link_type,
+                    "ip_address": ip_address,
+                    "user_agent": user_agent,
+                }
+            )
             submission = Submission(**submission_dict)
 
             self.session.add(submission)
@@ -63,10 +66,11 @@ class SubmissionRepository:
     def get_by_project_and_group(self, project_uuid: UUID, group_uuid: UUID) -> List[Submission]:
         """Get all submissions for a specific project and group"""
         try:
-            statement = select(Submission).where(
-                Submission.project_uuid == project_uuid,
-                Submission.group_uuid == group_uuid
-            ).order_by(Submission.upload_date_time.desc())
+            statement = (
+                select(Submission)
+                .where(Submission.project_uuid == project_uuid, Submission.group_uuid == group_uuid)
+                .order_by(Submission.upload_date_time.desc())
+            )
             return list(self.session.exec(statement).all())
         except Exception as e:
             raise DatabaseException(f"Failed to get submissions: {str(e)}")
@@ -74,10 +78,11 @@ class SubmissionRepository:
     def get_by_project_step(self, project_uuid: UUID, project_step: str) -> List[Submission]:
         """Get all submissions for a specific project step"""
         try:
-            statement = select(Submission).where(
-                Submission.project_uuid == project_uuid,
-                Submission.project_step == project_step
-            ).order_by(Submission.upload_date_time.desc())
+            statement = (
+                select(Submission)
+                .where(Submission.project_uuid == project_uuid, Submission.project_step == project_step)
+                .order_by(Submission.upload_date_time.desc())
+            )
             return list(self.session.exec(statement).all())
         except Exception as e:
             raise DatabaseException(f"Failed to get submissions by step: {str(e)}")
@@ -128,9 +133,7 @@ class SubmissionRepository:
     def list_all(self, skip: int = 0, limit: int = 100) -> List[Submission]:
         """List all submissions with pagination"""
         try:
-            statement = select(Submission).order_by(
-                Submission.upload_date_time.desc()
-            ).offset(skip).limit(limit)
+            statement = select(Submission).order_by(Submission.upload_date_time.desc()).offset(skip).limit(limit)
             return list(self.session.exec(statement).all())
         except Exception as e:
             raise DatabaseException(f"Failed to list submissions: {str(e)}")
@@ -139,8 +142,7 @@ class SubmissionRepository:
         """Count submissions for a specific project and group"""
         try:
             statement = select(Submission).where(
-                Submission.project_uuid == project_uuid,
-                Submission.group_uuid == group_uuid
+                Submission.project_uuid == project_uuid, Submission.group_uuid == group_uuid
             )
             return len(list(self.session.exec(statement).all()))
         except Exception as e:
@@ -153,7 +155,7 @@ class SubmissionRepository:
                 Submission.project_uuid == project_uuid,
                 Submission.group_uuid == group_uuid,
                 Submission.project_step == project_step,
-                Submission.link == link
+                Submission.link == link,
             )
             existing = self.session.exec(statement).first()
             return existing is not None

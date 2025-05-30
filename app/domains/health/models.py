@@ -1,9 +1,11 @@
 from datetime import datetime
+
 from sqlmodel import SQLModel
 
 
 class HealthCheck(SQLModel):
     """Health check response model"""
+
     status: str
     timestamp: datetime
     version: str
@@ -12,6 +14,7 @@ class HealthCheck(SQLModel):
 
 class DatabaseHealth(SQLModel):
     """Database health information"""
+
     status: str
     connection_time_ms: float
     query_test_passed: bool
@@ -19,7 +22,8 @@ class DatabaseHealth(SQLModel):
 
 class ServiceHealth(SQLModel):
     """Overall service health information"""
+
     api_status: str
     database: DatabaseHealth
     uptime_seconds: float
-    memory_usage_mb: float 
+    memory_usage_mb: float

@@ -1,13 +1,15 @@
 from datetime import datetime
+from enum import Enum
 from typing import Optional
 from uuid import UUID, uuid4
-from enum import Enum
-from sqlmodel import SQLModel, Field
+
 from pydantic import field_validator
+from sqlmodel import Field, SQLModel
 
 
 class ProjectStep(str, Enum):
     """Enumeration for project steps"""
+
     STEP_1 = "step_1"
     STEP_2 = "step_2"
     STEP_3 = "step_3"
@@ -18,6 +20,7 @@ class ProjectStep(str, Enum):
 
 class SubmissionStatus(str, Enum):
     """Enumeration for submission status"""
+
     PENDING = "pending"
     PROCESSING = "processing"
     COMPLETED = "completed"
@@ -27,6 +30,7 @@ class SubmissionStatus(str, Enum):
 
 class LinkType(str, Enum):
     """Enumeration for link types"""
+
     S3 = "s3"
     GITHUB = "github"
     GITLAB = "gitlab"
@@ -34,6 +38,7 @@ class LinkType(str, Enum):
 
 class SubmissionBase(SQLModel):
     """Base submission model with common fields"""
+
     link: str = Field(description="Link to S3, GitHub, or GitLab repository")
     project_uuid: UUID = Field(description="UUID of the associated project")
     group_uuid: UUID = Field(description="UUID of the associated group")
@@ -41,32 +46,34 @@ class SubmissionBase(SQLModel):
 
     # Optional fields that will be useful
     link_type: Optional[LinkType] = Field(default=None, description="Type of the submission link")
-    description: Optional[str] = Field(default=None, max_length=1000,
-                                       description="Optional description of the submission")
+    description: Optional[str] = Field(
+        default=None, max_length=1000, description="Optional description of the submission"
+    )
     submitted_by: Optional[str] = Field(default=None, max_length=255, description="Name or identifier of the submitter")
     file_size_bytes: Optional[int] = Field(default=None, ge=0, description="Size of the submission in bytes")
     file_count: Optional[int] = Field(default=None, ge=0, description="Number of files in the submission")
 
-    @field_validator('link')
+    @field_validator("link")
     def validate_link(cls, v):
         """Validate that the link is a proper URL or S3 path"""
         if not v:
-            raise ValueError('Link cannot be empty')
+            raise ValueError("Link cannot be empty")
 
         # Basic validation for different link types
         v_lower = v.lower()
-        if v_lower.startswith('s3://'):
+        if v_lower.startswith("s3://"):
             return v
-        elif 'github.com' in v_lower or 'gitlab.com' in v_lower:
-            if not v_lower.startswith('https://'):
-                raise ValueError('GitHub/GitLab links must start with https://')
+        elif "github.com" in v_lower or "gitlab.com" in v_lower:
+            if not v_lower.startswith("https://"):
+                raise ValueError("GitHub/GitLab links must start with https://")
             return v
         else:
-            raise ValueError('Link must be an S3 path (s3://) or a GitHub/GitLab URL')
+            raise ValueError("Link must be an S3 path (s3://) or a GitHub/GitLab URL")
 
 
 class Submission(SubmissionBase, table=True):
     """Database model for submissions"""
+
     __tablename__ = "submission"
 
     id: Optional[UUID] = Field(default_factory=uuid4, primary_key=True)
