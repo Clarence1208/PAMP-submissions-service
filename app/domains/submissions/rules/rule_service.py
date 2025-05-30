@@ -25,12 +25,7 @@ class RuleExecutionResult:
 
     def to_dict(self):
         """Convert result to dictionary format"""
-        result = {
-            "rule_name": self.rule_name,
-            "passed": self.passed,
-            "message": self.message,
-            "params": self.params
-        }
+        result = {"rule_name": self.rule_name, "passed": self.passed, "message": self.message, "params": self.params}
 
         if self.error_details:
             result["error_details"] = self.error_details
@@ -47,13 +42,13 @@ class RuleService:
     def validate_submission(self, submission_data: CreateSubmissionDto) -> List[RuleExecutionResult]:
         """
         Validate a submission by executing all specified rules
-        
+
         Args:
             submission_data: The submission data containing rules to execute
-            
+
         Returns:
             List of rule execution results
-            
+
         Raises:
             ValidationException: If rules are invalid or execution fails
         """
@@ -68,8 +63,7 @@ class RuleService:
         missing_rules = self.registry.validate_rules(rule_data_list)
         if missing_rules:
             raise ValidationException(
-                f"Unknown rules specified: {missing_rules}. "
-                f"Available rules: {self.registry.get_rule_names()}"
+                f"Unknown rules specified: {missing_rules}. " f"Available rules: {self.registry.get_rule_names()}"
             )
 
         # Only handle GitHub repositories for now
@@ -90,12 +84,14 @@ class RuleService:
                     results.append(result)
                 except Exception as e:
                     logger.error(f"Failed to execute rule '{rule_dto.name}': {str(e)}")
-                    results.append(RuleExecutionResult(
-                        rule_name=rule_dto.name,
-                        passed=False,
-                        message=f"Rule execution failed: {str(e)}",
-                        params=rule_dto.params
-                    ))
+                    results.append(
+                        RuleExecutionResult(
+                            rule_name=rule_dto.name,
+                            passed=False,
+                            message=f"Rule execution failed: {str(e)}",
+                            params=rule_dto.params,
+                        )
+                    )
 
             return results
 
@@ -107,7 +103,7 @@ class RuleService:
 
     def _is_github_repo(self, link: str) -> bool:
         """Check if the link is a GitHub repository"""
-        return 'github.com' in link.lower()
+        return "github.com" in link.lower()
 
     def _create_temp_directory(self) -> str:
         """Create a temporary directory for repository cloning"""
@@ -118,14 +114,14 @@ class RuleService:
     def _clone_github_repo(self, repo_url: str, temp_dir: str) -> Path:
         """
         Clone a GitHub repository to the temporary directory
-        
+
         Args:
             repo_url: GitHub repository URL
             temp_dir: Temporary directory path
-            
+
         Returns:
             Path to the cloned repository
-            
+
         Raises:
             ValidationException: If cloning fails
         """
@@ -140,12 +136,7 @@ class RuleService:
             logger.info(f"Cloning repository: {clone_url}")
 
             # Execute git clone
-            result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                timeout=300  # 5 minute timeout
-            )
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)  # 5 minute timeout
 
             if result.returncode != 0:
                 error_msg = f"Git clone failed: {result.stderr}"
@@ -163,11 +154,11 @@ class RuleService:
     def _extract_repo_name(self, repo_url: str) -> str:
         """Extract repository name from GitHub URL"""
         # Handle various GitHub URL formats
-        url_parts = repo_url.rstrip('/').split('/')
+        url_parts = repo_url.rstrip("/").split("/")
         if len(url_parts) >= 2:
             repo_name = url_parts[-1]
             # Remove .git suffix if present
-            if repo_name.endswith('.git'):
+            if repo_name.endswith(".git"):
                 repo_name = repo_name[:-4]
             return repo_name
         return "repo"
@@ -177,13 +168,13 @@ class RuleService:
         url = repo_url.strip()
 
         # If it's already a .git URL, use it as is
-        if url.endswith('.git'):
+        if url.endswith(".git"):
             return url
 
         # If it's a web URL, convert to .git URL
-        if url.startswith('https://github.com/'):
-            if not url.endswith('.git'):
-                url += '.git'
+        if url.startswith("https://github.com/"):
+            if not url.endswith(".git"):
+                url += ".git"
             return url
 
         # Handle other formats if needed
@@ -192,11 +183,11 @@ class RuleService:
     def _execute_rule(self, rule_dto: RuleDto, repo_path: Path) -> RuleExecutionResult:
         """
         Execute a single rule on the repository
-        
+
         Args:
             rule_dto: Rule to execute
             repo_path: Path to the cloned repository
-            
+
         Returns:
             Rule execution result with structured error details
         """
@@ -220,8 +211,8 @@ class RuleService:
                         "error_type": "invalid_return_format",
                         "expected": "(bool, str/dict)",
                         "actual": str(type(validation_result).__name__),
-                        "message": f"Rule implementation error: expected (bool, str/dict) tuple, got {type(validation_result).__name__}"
-                    }
+                        "message": f"Rule implementation error: expected (bool, str/dict) tuple, got {type(validation_result).__name__}",
+                    },
                 )
 
             passed, result_data = validation_result
@@ -240,8 +231,8 @@ class RuleService:
                         "expected": "bool",
                         "actual": type(passed).__name__,
                         "value": passed,
-                        "message": f"Rule implementation error: expected boolean for passed, got {type(passed).__name__}: {passed}"
-                    }
+                        "message": f"Rule implementation error: expected boolean for passed, got {type(passed).__name__}: {passed}",
+                    },
                 )
 
             # Handle structured error data (dict) vs simple message (str)
@@ -266,7 +257,7 @@ class RuleService:
                 passed=passed,
                 message=message,
                 params=rule_dto.params,
-                error_details=error_details
+                error_details=error_details,
             )
 
         except ValueError as e:
@@ -281,8 +272,8 @@ class RuleService:
                     "code": "parameterValidationError",
                     "error_type": "ValueError",
                     "error_message": str(e),
-                    "message": f"Parameter validation error: {str(e)}"
-                }
+                    "message": f"Parameter validation error: {str(e)}",
+                },
             )
         except Exception as e:
             # Handle any other unexpected errors
@@ -296,8 +287,8 @@ class RuleService:
                     "code": "unexpectedRuleError",
                     "error_type": type(e).__name__,
                     "error_message": str(e),
-                    "message": f"Unexpected rule execution error: {str(e)}"
-                }
+                    "message": f"Unexpected rule execution error: {str(e)}",
+                },
             )
 
     def get_available_rules(self) -> List[str]:

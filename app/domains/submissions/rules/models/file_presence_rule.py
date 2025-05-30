@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Union, Dict, Any, Tuple
+from typing import Any, Dict, Tuple, Union
 
 from app.domains.submissions.rules.models.rule import Rule
 
@@ -23,7 +23,7 @@ class FilePresenceRule(Rule):
                     "expected_type": "array",
                     "actual_type": type(must_exist_patterns).__name__,
                     "actual_value": must_exist_patterns,
-                    "message": f"Parameter 'must_exist' must be a list of patterns, got {type(must_exist_patterns).__name__}: {must_exist_patterns}"
+                    "message": f"Parameter 'must_exist' must be a list of patterns, got {type(must_exist_patterns).__name__}: {must_exist_patterns}",
                 }
 
             if forbidden_patterns and not isinstance(forbidden_patterns, list):
@@ -33,7 +33,7 @@ class FilePresenceRule(Rule):
                     "expected_type": "array",
                     "actual_type": type(forbidden_patterns).__name__,
                     "actual_value": forbidden_patterns,
-                    "message": f"Parameter 'forbidden' must be a list of patterns, got {type(forbidden_patterns).__name__}: {forbidden_patterns}"
+                    "message": f"Parameter 'forbidden' must be a list of patterns, got {type(forbidden_patterns).__name__}: {forbidden_patterns}",
                 }
 
             # assert there is at least one pattern for must_exist or forbidden
@@ -41,7 +41,7 @@ class FilePresenceRule(Rule):
                 return False, {
                     "code": "missingRequiredParameters",
                     "required_parameters": ["must_exist", "forbidden"],
-                    "message": "At least one 'must_exist' or 'forbidden' pattern must be specified"
+                    "message": "At least one 'must_exist' or 'forbidden' pattern must be specified",
                 }
 
             # Check for required files
@@ -54,7 +54,7 @@ class FilePresenceRule(Rule):
                             "pattern": pattern,
                             "expected_type": "string",
                             "actual_type": type(pattern).__name__,
-                            "message": f"All patterns in 'must_exist' must be strings, got {type(pattern).__name__}: {pattern}"
+                            "message": f"All patterns in 'must_exist' must be strings, got {type(pattern).__name__}: {pattern}",
                         }
                     if not any(submission_path.glob(pattern)):
                         missing.append(pattern)
@@ -69,7 +69,7 @@ class FilePresenceRule(Rule):
                             "pattern": pattern,
                             "expected_type": "string",
                             "actual_type": type(pattern).__name__,
-                            "message": f"All patterns in 'forbidden' must be strings, got {type(pattern).__name__}: {pattern}"
+                            "message": f"All patterns in 'forbidden' must be strings, got {type(pattern).__name__}: {pattern}",
                         }
                     if any(submission_path.glob(pattern)):
                         forbidden.append(pattern)
@@ -78,26 +78,30 @@ class FilePresenceRule(Rule):
             errors = []
 
             if missing:
-                errors.append({
-                    "code": "missingRequiredFiles",
-                    "missing_files": missing,
-                    "patterns": must_exist_patterns,
-                    "message": f"Missing required files: {', '.join(missing)}"
-                })
+                errors.append(
+                    {
+                        "code": "missingRequiredFiles",
+                        "missing_files": missing,
+                        "patterns": must_exist_patterns,
+                        "message": f"Missing required files: {', '.join(missing)}",
+                    }
+                )
 
             if forbidden:
-                errors.append({
-                    "code": "forbiddenFilesFound",
-                    "forbidden_files": forbidden,
-                    "patterns": forbidden_patterns,
-                    "message": f"Forbidden files found: {', '.join(forbidden)}"
-                })
+                errors.append(
+                    {
+                        "code": "forbiddenFilesFound",
+                        "forbidden_files": forbidden,
+                        "patterns": forbidden_patterns,
+                        "message": f"Forbidden files found: {', '.join(forbidden)}",
+                    }
+                )
 
             if errors:
                 return False, {
                     "code": "fileValidationFailed",
                     "errors": errors,
-                    "message": f"File validation failed with {len(errors)} error(s)"
+                    "message": f"File validation failed with {len(errors)} error(s)",
                 }
             else:
                 return True, "All required files are present and no forbidden files found"
@@ -108,5 +112,5 @@ class FilePresenceRule(Rule):
                 "code": "ruleExecutionError",
                 "error_type": type(e).__name__,
                 "error_message": str(e),
-                "message": f"Rule execution error: {str(e)}"
+                "message": f"Rule execution error: {str(e)}",
             }

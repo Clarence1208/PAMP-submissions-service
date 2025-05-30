@@ -1,4 +1,5 @@
-from sqlmodel import SQLModel, create_engine, Session, text
+from sqlmodel import Session, SQLModel, create_engine, text
+
 from app.config.config import get_settings
 
 # Import all models to ensure they are registered with SQLModel
@@ -11,7 +12,7 @@ engine = create_engine(
     settings.database_url,
     echo=settings.debug,  # Log SQL queries in debug mode
     pool_pre_ping=True,  # Verify connections before use
-    pool_recycle=300  # Recreate connections after 5 minutes
+    pool_recycle=300,  # Recreate connections after 5 minutes
 )
 
 

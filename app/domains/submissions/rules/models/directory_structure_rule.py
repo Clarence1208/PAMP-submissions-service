@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-from typing import List, Union, Dict, Any, Tuple
+from typing import Any, Dict, List, Tuple, Union
 
 from app.domains.submissions.rules.models.rule import Rule
 
@@ -26,9 +26,9 @@ class DirectoryStructureRule(Rule):
                     "expected_type": "array",
                     "actual_type": type(required_directories).__name__,
                     "actual_value": required_directories,
-                    "message": f"Parameter 'required_directories' must be a list of directory patterns, got {type(required_directories).__name__}: {required_directories}"
+                    "message": f"Parameter 'required_directories' must be a list of directory patterns, got {type(required_directories).__name__}: {required_directories}",
                 }
-            
+
             if forbidden_directories and not isinstance(forbidden_directories, list):
                 return False, {
                     "code": "invalidParameterType",
@@ -36,7 +36,7 @@ class DirectoryStructureRule(Rule):
                     "expected_type": "array",
                     "actual_type": type(forbidden_directories).__name__,
                     "actual_value": forbidden_directories,
-                    "message": f"Parameter 'forbidden_directories' must be a list of directory patterns, got {type(forbidden_directories).__name__}: {forbidden_directories}"
+                    "message": f"Parameter 'forbidden_directories' must be a list of directory patterns, got {type(forbidden_directories).__name__}: {forbidden_directories}",
                 }
 
             if max_depth is not None and not isinstance(max_depth, int):
@@ -46,7 +46,7 @@ class DirectoryStructureRule(Rule):
                     "expected_type": "integer",
                     "actual_type": type(max_depth).__name__,
                     "actual_value": max_depth,
-                    "message": f"Parameter 'max_depth' must be an integer, got {type(max_depth).__name__}: {max_depth}"
+                    "message": f"Parameter 'max_depth' must be an integer, got {type(max_depth).__name__}: {max_depth}",
                 }
 
             if max_depth is not None and max_depth < 1:
@@ -55,7 +55,7 @@ class DirectoryStructureRule(Rule):
                     "parameter": "max_depth",
                     "value": max_depth,
                     "constraint": "must be greater than 0",
-                    "message": f"Parameter 'max_depth' must be greater than 0, got: {max_depth}"
+                    "message": f"Parameter 'max_depth' must be greater than 0, got: {max_depth}",
                 }
 
             if not isinstance(allow_empty_dirs, bool):
@@ -65,7 +65,7 @@ class DirectoryStructureRule(Rule):
                     "expected_type": "boolean",
                     "actual_type": type(allow_empty_dirs).__name__,
                     "actual_value": allow_empty_dirs,
-                    "message": f"Parameter 'allow_empty_dirs' must be a boolean, got {type(allow_empty_dirs).__name__}: {allow_empty_dirs}"
+                    "message": f"Parameter 'allow_empty_dirs' must be a boolean, got {type(allow_empty_dirs).__name__}: {allow_empty_dirs}",
                 }
 
             # Require at least one validation parameter
@@ -73,12 +73,12 @@ class DirectoryStructureRule(Rule):
                 return False, {
                     "code": "missingRequiredParameters",
                     "required_parameters": ["required_directories", "forbidden_directories", "max_depth"],
-                    "message": "At least one validation parameter must be specified: 'required_directories', 'forbidden_directories', or 'max_depth'"
+                    "message": "At least one validation parameter must be specified: 'required_directories', 'forbidden_directories', or 'max_depth'",
                 }
 
             # Get all directories in the submission
             all_directories = self._get_all_directories(submission_path)
-            
+
             # Check for required directories
             if required_directories:
                 for pattern in required_directories:
@@ -89,11 +89,15 @@ class DirectoryStructureRule(Rule):
                             "pattern": pattern,
                             "expected_type": "string",
                             "actual_type": type(pattern).__name__,
-                            "message": f"All patterns in 'required_directories' must be strings, got {type(pattern).__name__}: {pattern}"
+                            "message": f"All patterns in 'required_directories' must be strings, got {type(pattern).__name__}: {pattern}",
                         }
-                    
+
                     # Check if any directory matches the pattern
-                    if not any(submission_path.glob(pattern) for pattern in [pattern] if (submission_path / pattern).is_dir() or any(submission_path.rglob(pattern.split('/')[-1]))):
+                    if not any(
+                        submission_path.glob(pattern)
+                        for pattern in [pattern]
+                        if (submission_path / pattern).is_dir() or any(submission_path.rglob(pattern.split("/")[-1]))
+                    ):
                         # More sophisticated pattern matching
                         found = False
                         for dir_path in all_directories:
@@ -114,9 +118,9 @@ class DirectoryStructureRule(Rule):
                             "pattern": pattern,
                             "expected_type": "string",
                             "actual_type": type(pattern).__name__,
-                            "message": f"All patterns in 'forbidden_directories' must be strings, got {type(pattern).__name__}: {pattern}"
+                            "message": f"All patterns in 'forbidden_directories' must be strings, got {type(pattern).__name__}: {pattern}",
                         }
-                    
+
                     # Check if any directory matches the forbidden pattern
                     for dir_path in all_directories:
                         relative_path = str(dir_path.relative_to(submission_path))
@@ -130,11 +134,9 @@ class DirectoryStructureRule(Rule):
                     relative_path = dir_path.relative_to(submission_path)
                     depth = len(relative_path.parts)
                     if depth > max_depth:
-                        depth_violations.append({
-                            "directory": str(relative_path),
-                            "depth": depth,
-                            "max_allowed": max_depth
-                        })
+                        depth_violations.append(
+                            {"directory": str(relative_path), "depth": depth, "max_allowed": max_depth}
+                        )
 
             # Check for empty directories if not allowed
             empty_dirs = []
@@ -146,45 +148,53 @@ class DirectoryStructureRule(Rule):
 
             # Create structured error response if there are violations
             errors = []
-            
+
             if missing_dirs:
-                errors.append({
-                    "code": "missingRequiredDirectories",
-                    "missing_directories": missing_dirs,
-                    "patterns": required_directories,
-                    "message": f"Missing required directories: {', '.join(missing_dirs)}"
-                })
+                errors.append(
+                    {
+                        "code": "missingRequiredDirectories",
+                        "missing_directories": missing_dirs,
+                        "patterns": required_directories,
+                        "message": f"Missing required directories: {', '.join(missing_dirs)}",
+                    }
+                )
 
             if forbidden_dirs:
                 # Remove duplicates
                 unique_forbidden = list(set(forbidden_dirs))
-                errors.append({
-                    "code": "forbiddenDirectoriesFound", 
-                    "forbidden_directories": unique_forbidden,
-                    "patterns": forbidden_directories,
-                    "message": f"Forbidden directories found: {', '.join(unique_forbidden)}"
-                })
+                errors.append(
+                    {
+                        "code": "forbiddenDirectoriesFound",
+                        "forbidden_directories": unique_forbidden,
+                        "patterns": forbidden_directories,
+                        "message": f"Forbidden directories found: {', '.join(unique_forbidden)}",
+                    }
+                )
 
             if depth_violations:
-                errors.append({
-                    "code": "directoryDepthExceeded",
-                    "violations": depth_violations,
-                    "max_depth": max_depth,
-                    "message": f"Directory depth exceeded: {len(depth_violations)} directories exceed maximum depth of {max_depth}"
-                })
+                errors.append(
+                    {
+                        "code": "directoryDepthExceeded",
+                        "violations": depth_violations,
+                        "max_depth": max_depth,
+                        "message": f"Directory depth exceeded: {len(depth_violations)} directories exceed maximum depth of {max_depth}",
+                    }
+                )
 
             if empty_dirs:
-                errors.append({
-                    "code": "emptyDirectoriesFound",
-                    "empty_directories": empty_dirs,
-                    "message": f"Empty directories found: {', '.join(empty_dirs)}"
-                })
+                errors.append(
+                    {
+                        "code": "emptyDirectoriesFound",
+                        "empty_directories": empty_dirs,
+                        "message": f"Empty directories found: {', '.join(empty_dirs)}",
+                    }
+                )
 
             if errors:
                 return False, {
                     "code": "directoryStructureValidationFailed",
                     "errors": errors,
-                    "message": f"Directory structure validation failed with {len(errors)} error(s)"
+                    "message": f"Directory structure validation failed with {len(errors)} error(s)",
                 }
             else:
                 total_dirs = len(all_directories)
@@ -192,14 +202,14 @@ class DirectoryStructureRule(Rule):
                 if max_depth:
                     message += f", max depth: {max_depth}"
                 return True, message
-                
+
         except Exception as e:
             # Catch any unexpected errors and return them in a clean format
             return False, {
                 "code": "ruleExecutionError",
                 "error_type": type(e).__name__,
                 "error_message": str(e),
-                "message": f"Rule execution error: {str(e)}"
+                "message": f"Rule execution error: {str(e)}",
             }
 
     def _get_all_directories(self, path: Path) -> List[Path]:
@@ -219,21 +229,21 @@ class DirectoryStructureRule(Rule):
         # Handle exact matches
         if path == pattern:
             return True
-        
+
         # Handle wildcards
-        if '*' in pattern:
+        if "*" in pattern:
             # Simple wildcard matching
-            pattern_parts = pattern.split('*')
+            pattern_parts = pattern.split("*")
             if len(pattern_parts) == 2:
                 prefix, suffix = pattern_parts
                 return path.startswith(prefix) and path.endswith(suffix)
-        
+
         # Handle directory separator patterns
-        if '/' in pattern:
-            return path == pattern or path.startswith(pattern + '/') or ('/' + pattern + '/') in path
-        
+        if "/" in pattern:
+            return path == pattern or path.startswith(pattern + "/") or ("/" + pattern + "/") in path
+
         # Handle simple name matching
-        path_parts = path.split('/')
+        path_parts = path.split("/")
         return pattern in path_parts
 
     def _is_directory_empty(self, dir_path: Path) -> bool:
@@ -242,6 +252,7 @@ class DirectoryStructureRule(Rule):
             return not any(dir_path.iterdir())
         except (PermissionError, OSError):
             return False
+
 
 # Example usage:
 # {
@@ -252,4 +263,4 @@ class DirectoryStructureRule(Rule):
 #       "max_depth": 5,
 #       "allow_empty_dirs": false
 #     }
-# } 
+# }

@@ -1,13 +1,14 @@
 from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config.config import get_settings
-from app.shared.database import create_db_and_tables
 
 # Import domain routers
 from app.domains.health.router import router as health_router
 from app.domains.submissions.submissions_controller import router as submissions_router
+from app.shared.database import create_db_and_tables
 
 settings = get_settings()
 
@@ -35,7 +36,7 @@ app = FastAPI(
     lifespan=lifespan,
     docs_url="/swagger-ui",
     redoc_url="/redoc",
-    openapi_url="/openapi.json"
+    openapi_url="/openapi.json",
 )
 
 # Add CORS middleware
@@ -63,19 +64,17 @@ async def root():
         "architecture": "Clean Architecture with Domain-Driven Design",
         "swagger": "/swagger-ui",
         "health": "/health",
-        "domains": {
-            "health": "/health",
-            "submissions": "/submissions"
-        }
+        "domains": {"health": "/health", "submissions": "/submissions"},
     }
 
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(
         "app.main:app",
         host="0.0.0.0",
         port=8001,
         reload=settings.debug,
-        log_level="debug" if settings.debug else "info"
+        log_level="debug" if settings.debug else "info",
     )

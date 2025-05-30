@@ -1,0 +1,227 @@
+name: Format & Lint Check
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  format-lint:
+    name: Format & Lint
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install black isort flake8
+
+      - name: Check formatting with black
+        id: format_check
+        run: |
+          # Turn off automatic exit on error
+          set +e
+          
+          # Run black format check and capture the output
+          black --check --diff app/ > format_output.txt 2>&1
+          FORMAT_EXIT_CODE=$?
+          
+          # Turn automatic exit on error back on
+          set -e
+          
+          # Store the exit code for later steps
+          echo "format_exit_code=$FORMAT_EXIT_CODE" >> $GITHUB_OUTPUT
+          
+          # Report results
+          if [ $FORMAT_EXIT_CODE -ne 0 ]; then
+            echo "⚠️ Formatting issues found:"
+            cat format_output.txt
+            # Create a flag to indicate formatting issues were found
+            echo "has_format_issues=true" >> $GITHUB_OUTPUT
+          else
+            echo "✅ Code formatting looks good!"
+            echo "has_format_issues=false" >> $GITHUB_OUTPUT
+          fi
+          
+          # Make sure we let the workflow continue to comment on PR
+          exit 0
+
+      - name: Check import sorting with isort
+        id: isort_check
+        run: |
+          # Turn off automatic exit on error
+          set +e
+          
+          # Run isort check and capture the output
+          isort --check-only --diff app/ > isort_output.txt 2>&1
+          ISORT_EXIT_CODE=$?
+          
+          # Turn automatic exit on error back on
+          set -e
+          
+          # Store the exit code for later steps
+          echo "isort_exit_code=$ISORT_EXIT_CODE" >> $GITHUB_OUTPUT
+          
+          # Report results
+          if [ $ISORT_EXIT_CODE -ne 0 ]; then
+            echo "⚠️ Import sorting issues found:"
+            cat isort_output.txt
+            # Create a flag to indicate isort issues were found
+            echo "has_isort_issues=true" >> $GITHUB_OUTPUT
+          else
+            echo "✅ Import sorting looks good!"
+            echo "has_isort_issues=false" >> $GITHUB_OUTPUT
+          fi
+          
+          # Make sure we let the workflow continue to comment on PR
+          exit 0
+
+      - name: Check linting with flake8
+        id: lint_check
+        run: |
+          # Turn off automatic exit on error
+          set +e
+          
+          # Run the lint check and capture the output
+          flake8 app/ --max-line-length=120 --extend-ignore=E203,W503 > lint_output.txt 2>&1
+          LINT_EXIT_CODE=$?
+          
+          # Turn automatic exit on error back on
+          set -e
+          
+          # Store the exit code for later steps
+          echo "lint_exit_code=$LINT_EXIT_CODE" >> $GITHUB_OUTPUT
+          
+          # Report results
+          if [ $LINT_EXIT_CODE -ne 0 ]; then
+            echo "⚠️ Linting issues found (warnings only):"
+            cat lint_output.txt
+            # Create a flag to indicate linting issues were found
+            echo "has_lint_issues=true" >> $GITHUB_OUTPUT
+            echo "::warning::Code linting issues found. These are warnings and won't fail the build."
+          else
+            echo "✅ Code linting looks good!"
+            echo "has_lint_issues=false" >> $GITHUB_OUTPUT
+          fi
+          
+          # Make sure we let the workflow continue to comment on PR
+          exit 0
+
+      - name: Comment PR with issues
+        if: github.event_name == 'pull_request' && (steps.format_check.outputs.has_format_issues == 'true' || steps.isort_check.outputs.has_isort_issues == 'true' || steps.lint_check.outputs.has_lint_issues == 'true')
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            let commentBody = '';
+            let hasBlockingIssues = false;
+            
+            // Check for blocking issues (format and import sorting)
+            if ('${{ steps.format_check.outputs.has_format_issues }}' === 'true' || '${{ steps.isort_check.outputs.has_isort_issues }}' === 'true') {
+              hasBlockingIssues = true;
+              commentBody += '## ❌ Code Quality Check Failed\n\n';
+            } else if ('${{ steps.lint_check.outputs.has_lint_issues }}' === 'true') {
+              commentBody += '## ⚠️ Code Quality Warnings\n\n';
+              commentBody += '> **Note**: Linting issues are warnings only and won\'t block your PR.\n\n';
+            }
+            
+            // Add formatting issues if any
+            if ('${{ steps.format_check.outputs.has_format_issues }}' === 'true' && fs.existsSync('format_output.txt')) {
+              const formatOutput = fs.readFileSync('format_output.txt', 'utf8');
+              commentBody += '### 🔴 Formatting Issues (Black) - **BLOCKING**\n\n';
+              commentBody += 'Your PR has code formatting issues that must be fixed. Please run `black app/` locally to fix them.\n\n';
+              commentBody += '```diff\n' + formatOutput + '\n```\n\n';
+            }
+            
+            // Add import sorting issues if any
+            if ('${{ steps.isort_check.outputs.has_isort_issues }}' === 'true' && fs.existsSync('isort_output.txt')) {
+              const isortOutput = fs.readFileSync('isort_output.txt', 'utf8');
+              commentBody += '### 🔴 Import Sorting Issues (isort) - **BLOCKING**\n\n';
+              commentBody += 'Your PR has import sorting issues that must be fixed. Please run `isort app/` locally to fix them.\n\n';
+              commentBody += '```diff\n' + isortOutput + '\n```\n\n';
+            }
+            
+            // Add linting issues if any
+            if ('${{ steps.lint_check.outputs.has_lint_issues }}' === 'true' && fs.existsSync('lint_output.txt')) {
+              const lintOutput = fs.readFileSync('lint_output.txt', 'utf8');
+              commentBody += '### 🟡 Linting Issues (Flake8) - **WARNINGS ONLY**\n\n';
+              commentBody += 'Your PR has code linting issues. These are warnings and won\'t block your PR, but fixing them will improve code quality.\n\n';
+              commentBody += '```\n' + lintOutput + '\n```\n\n';
+            }
+            
+            if (hasBlockingIssues) {
+              commentBody += '### How to fix blocking issues:\n';
+              commentBody += '1. Run `black app/` to fix formatting issues\n';
+              commentBody += '2. Run `isort app/` to fix import sorting issues\n';
+              commentBody += '3. Commit and push the changes\n';
+              commentBody += '4. The CI will run again and should pass these checks\n\n';
+            }
+            
+            if ('${{ steps.lint_check.outputs.has_lint_issues }}' === 'true') {
+              commentBody += '### Optional: To fix linting warnings:\n';
+              commentBody += '- Run `flake8 app/ --max-line-length=120 --extend-ignore=E203,W503` to see linting issues\n';
+              commentBody += '- Fix issues manually (remove unused imports, shorten long lines, etc.)\n';
+              commentBody += '- These fixes improve code quality but are not required for PR approval\n';
+            }
+            
+            // Post the comment on the PR
+            try {
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: commentBody
+              });
+              
+              console.log('Successfully posted code quality comment to PR');
+            } catch (error) {
+              console.error('Error posting code quality comment:', error);
+            }
+
+      - name: Determine overall success
+        if: always()
+        run: |
+          FORMAT_EXIT_CODE="${{ steps.format_check.outputs.format_exit_code }}"
+          ISORT_EXIT_CODE="${{ steps.isort_check.outputs.isort_exit_code }}"
+          LINT_EXIT_CODE="${{ steps.lint_check.outputs.lint_exit_code }}"
+          
+          echo "Format exit code: $FORMAT_EXIT_CODE"
+          echo "Isort exit code: $ISORT_EXIT_CODE"
+          echo "Lint exit code: $LINT_EXIT_CODE (warnings only)"
+          
+          # Only fail for formatting and import sorting issues
+          if [[ "$FORMAT_EXIT_CODE" != "0" && "$FORMAT_EXIT_CODE" != "" ]]; then
+            echo "::error::Code formatting issues found. Run 'black app/' locally to fix."
+            exit_with_error=true
+          fi
+          
+          if [[ "$ISORT_EXIT_CODE" != "0" && "$ISORT_EXIT_CODE" != "" ]]; then
+            echo "::error::Import sorting issues found. Run 'isort app/' locally to fix."
+            exit_with_error=true
+          fi
+          
+          # Linting issues are only warnings, don't fail the build
+          if [[ "$LINT_EXIT_CODE" != "0" && "$LINT_EXIT_CODE" != "" ]]; then
+            echo "::warning::Code linting issues found. These are warnings only and don't block the PR."
+          fi
+          
+          if [[ "$exit_with_error" == "true" ]]; then
+            echo "❌ Workflow failed due to formatting or import sorting issues"
+            exit 1
+          else
+            echo "::notice::✅ Code quality check completed successfully! Linting warnings (if any) don't block PRs."
+            exit 0
+          fi 
