@@ -3,11 +3,11 @@ version: '3.8'
 services:
   web:
     build: .
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    command: uvicorn app.main:app --host 0.0.0.0 --port 3002 --reload
     volumes:
       - .:/app
     ports:
-      - "8000:8000"
+      - "3002:3002"
     environment:
       - DATABASE_URL=postgresql://postgres:password@db:5432/submissions_db
       - DEBUG=true
