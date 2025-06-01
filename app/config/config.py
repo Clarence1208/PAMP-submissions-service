@@ -9,6 +9,9 @@ class Settings(BaseSettings):
     app_version: str = "1.0.0"
     debug: bool = True
 
+    # Server settings
+    port: int = 3002
+
     # Database settings
     database_url: str = "postgresql://postgres:password@localhost:5432/submissions_db"
     postgres_user: str = "postgres"
