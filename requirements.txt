@@ -8,6 +8,11 @@ pydantic-settings==2.7.0
 pytest==7.4.3
 psutil==5.9.6
 
+# Tree-sitter dependencies for tokenization
+tree-sitter==0.24.0
+tree-sitter-python==0.23.6
+# todo will need to install all languages i want to support later
+
 # Development dependencies
 black==23.11.0
 isort==5.12.0

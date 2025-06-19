@@ -8,6 +8,7 @@ from app.config.config import get_settings
 # Import domain routers
 from app.domains.health.router import router as health_router
 from app.domains.submissions.submissions_controller import router as submissions_router
+from app.domains.detection.router import router as detection_router
 from app.shared.database import create_db_and_tables
 
 settings = get_settings()
@@ -51,6 +52,7 @@ app.add_middleware(
 # Include domain routers
 app.include_router(health_router)
 app.include_router(submissions_router)
+app.include_router(detection_router)
 
 
 @app.get("/")
@@ -64,7 +66,11 @@ async def root():
         "architecture": "Clean Architecture with Domain-Driven Design",
         "swagger": "/swagger-ui",
         "health": "/health",
-        "domains": {"health": "/health", "submissions": "/submissions"},
+        "domains": {
+            "health": "/health", 
+            "submissions": "/submissions",
+            "detection": "/detection"
+        },
     }
 
 

@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Dict, List, Optional
+from typing import List, Optional
 from uuid import UUID
 
 from sqlmodel import Session
@@ -8,8 +8,7 @@ from app.domains.submissions.dto.create_submission_dto import CreateSubmissionDt
 from app.domains.submissions.dto.create_submission_response_dto import CreateSubmissionResponseDto
 from app.domains.submissions.dto.submission_response_dto import SubmissionResponseDto
 from app.domains.submissions.dto.submission_update_dto import SubmissionUpdateDto
-from app.domains.submissions.rules.rule_service import RuleExecutionResult, RuleService
-from app.domains.submissions.submissions_models import Submission
+from app.domains.submissions.rules.rule_service import RuleService
 from app.domains.submissions.submissions_repository import SubmissionRepository
 from app.shared.exceptions import NotFoundException, ValidationException
 
@@ -24,12 +23,12 @@ class SubmissionService:
         self.rule_service = RuleService()
 
     def create_submission(
-        self,
-        submission_data: CreateSubmissionDto,
-        ip_address: Optional[str] = None,
-        user_agent: Optional[str] = None,
-        allow_duplicates: bool = False,
-        execute_rules: bool = True,
+            self,
+            submission_data: CreateSubmissionDto,
+            ip_address: Optional[str] = None,
+            user_agent: Optional[str] = None,
+            allow_duplicates: bool = False,
+            execute_rules: bool = True,
     ) -> CreateSubmissionResponseDto:
         """Create a new submission with business logic validation"""
 
