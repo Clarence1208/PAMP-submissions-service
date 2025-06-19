@@ -2,6 +2,35 @@
 
 A high-performance Python microservice for detecting cheating in project submissions using FastAPI, SQLModel, and PostgreSQL.
 
+## Running Tests
+
+### Option 1: Use the Test Runner (Recommended)
+```bash
+  python run_tests.py
+```
+This runs all test suites and provides a comprehensive summary.
+
+### Option 2: Individual Test Suites
+```bash
+# Tokenization tests
+python -m pytest tests/domains/tokenization/ -v
+
+# Similarity detection tests  
+python -m pytest tests/domains/detection/ -v
+
+# Integration tests
+python -m tests.test_integration
+```
+
+### Option 3: Specific Tests
+```bash
+# Run a specific test class
+python -m pytest tests/domains/tokenization/test_tokenization_service.py::TestTokenizationService -v
+
+# Run a specific test method
+python -m pytest tests/domains/tokenization/test_tokenization_service.py::TestTokenizationService::test_basic_tokenization -v
+```
+
 ## Rule System
 
 The PAMP Submissions Service includes a comprehensive rule validation system that can automatically clone GitHub repositories and validate them against customizable rules.
@@ -95,7 +124,7 @@ Validates that the repository size doesn't exceed a specified limit.
 {
   "name": "max_archive_size",
   "params": {
-    "max_size_mb": 50    // 50MB limit
+    "max_size_mb": 50
   }
 }
 ```
