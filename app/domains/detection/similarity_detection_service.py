@@ -800,8 +800,8 @@ class SimilarityDetectionService:
                     "id": f"similarity_edge_{i}",
                     "source": file1_node_id,
                     "target": file2_node_id,
-                    "type": "straight",
                     "animated": True,
+                    "type": "bezier",
                     "data": {
                         "type": "similarity",
                         "similarity_score": block.get('similarity_score', 0)
