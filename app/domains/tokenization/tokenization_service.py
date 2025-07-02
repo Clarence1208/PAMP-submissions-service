@@ -1,23 +1,31 @@
-import shutil
-import subprocess
 import logging
+import shutil
 import tempfile
 from pathlib import Path
 from typing import List, Dict, Any, Optional
+from uuid import uuid4
 
 import tree_sitter_python as tspython
 from tree_sitter import Parser, Language
 
-from app.shared.exceptions import ValidationException
 from app.domains.detection.similarity_detection_service import SimilarityDetectionService
+from app.domains.repositories.submission_fetcher import SubmissionFetcher
+from app.domains.submissions.dto.create_submission_dto import CreateSubmissionDto
+from app.shared.exceptions import ValidationException
+from app.domains.repositories.exceptions import (
+    RepositoryFetchException, UnsupportedRepositoryException,
+    SubmissionValidationException, TemporaryDirectoryException
+)
 
 logger = logging.getLogger(__name__)
+
 
 class TokenizationService:
     def __init__(self):
         """Initialize the tokenization service with tree-sitter parsers"""
         self.parsers = {}
         self.similarity_service = SimilarityDetectionService()
+        self.submission_fetcher = SubmissionFetcher()
         self._setup_parsers()
 
     def _setup_parsers(self):
@@ -82,7 +90,7 @@ class TokenizationService:
                 'type': node.type,
                 'text': token_text,
                 'start': node.start_point[0],  # Just row number
-                'end': node.end_point[0]       # Just row number
+                'end': node.end_point[0]  # Just row number
             }
             tokens.append(token)
 
@@ -127,88 +135,77 @@ class TokenizationService:
                     # Optionally save tokens or process further
                 except Exception as e:
                     logger.error(f"Failed to tokenize {file_path}: {str(e)}")
-            else :
+            else:
                 logger.warning(f"Skipping non-file path: {file_path}")
 
-    def _create_temp_directory(self) -> str:
-        """Create a temporary directory for repository cloning"""
-
-        temp_dir = tempfile.mkdtemp(prefix="submission_validation_")
-        logger.debug(f"Created temporary directory: {temp_dir}")
-        return temp_dir
-
-    def _clone_github_repo(self, repo_url: str, temp_dir: str) -> Path:
+    def tokenize_project_from_url(self, project_url: str) -> None:
         """
-        Clone a GitHub repository to the temporary directory
-
+        Fetch and tokenize a project from a URL (GitHub, GitLab, or S3)
+        
         Args:
-            repo_url: GitHub repository URL
-            temp_dir: Temporary directory path
-
-        Returns:
-            Path to the cloned repository
-
+            project_url: URL of the project to tokenize
+            
         Raises:
-            ValidationException: If cloning fails
+            RepositoryFetchException: If URL is not supported or fetching fails
+            UnsupportedRepositoryException: If URL format is not supported
+            ValidationException: If tokenization fails
         """
-
-        repo_name = self._extract_repo_name(repo_url)
-        repo_path = Path(temp_dir) / repo_name
-
+        if not project_url or not project_url.strip():
+            raise ValidationException("Project URL cannot be empty")
+        
+        temp_dir = None
         try:
-            # Prepare git clone command
-            clone_url = self._normalize_github_url(repo_url)
-            cmd = ["git", "clone", "--depth", "1", clone_url, str(repo_path)]
-
-            logger.info(f"Cloning repository: {clone_url}")
-
-            # Execute git clone
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)  # 5 minute timeout
-
-            if result.returncode != 0:
-                error_msg = f"Git clone failed: {result.stderr}"
-                logger.error(error_msg)
-                raise ValidationException(error_msg)
-
-            # delete .git directory to avoid unnecessary files
+            # Create a temporary submission object for fetching
+            temp_submission = CreateSubmissionDto(
+                link=project_url.strip(),
+                project_uuid=uuid4(),  # Temporary UUID for tokenization
+                group_uuid=uuid4(),    # Temporary UUID for tokenization
+                project_step="tokenization"
+            )
+            
+            logger.info(f"Starting tokenization for project: {project_url}")
+            
+            # Fetch submission with simplified error handling
+            try:
+                repo_path = self.submission_fetcher.fetch_submission(temp_submission)
+                logger.info(f"Successfully fetched project for tokenization: {repo_path}")
+            except (UnsupportedRepositoryException, RepositoryFetchException):
+                # Re-raise repository-specific exceptions
+                raise
+            except SubmissionValidationException as e:
+                # Convert to ValidationException for consistency
+                raise ValidationException(f"Submission validation failed: {str(e)}")
+            except Exception as e:
+                # Handle any other unexpected errors
+                logger.error(f"Unexpected error during project fetch for tokenization: {str(e)}")
+                raise RepositoryFetchException(f"Unexpected error during project fetch: {str(e)}")
+            
+            # Verify the fetched project
+            if not repo_path.exists():
+                raise ValidationException(f"Fetched project path does not exist: {repo_path}")
+            
+            # Remove .git directory if it exists (for git repositories)
             git_dir = repo_path / ".git"
             if git_dir.exists():
-                shutil.rmtree(git_dir)
-                logger.debug(f"Removed .git directory from: {repo_path}")
-
-            logger.info(f"Successfully cloned repository to: {repo_path}")
-            return repo_path
-
-        except subprocess.TimeoutExpired:
-            raise ValidationException("Repository cloning timed out (5 minutes)")
-        except Exception as e:
-            raise ValidationException(f"Failed to clone repository: {str(e)}")
-
-    def _extract_repo_name(self, repo_url: str) -> str:
-        """Extract repository name from GitHub URL"""
-        # Handle various GitHub URL formats
-        url_parts = repo_url.rstrip("/").split("/")
-        if len(url_parts) >= 2:
-            repo_name = url_parts[-1]
-            # Remove .git suffix if present
-            if repo_name.endswith(".git"):
-                repo_name = repo_name[:-4]
-            return repo_name
-        return "repo"
-
-    def _normalize_github_url(self, repo_url: str) -> str:
-        """Normalize GitHub URL for cloning"""
-        url = repo_url.strip()
-
-        # If it's already a .git URL, use it as is
-        if url.endswith(".git"):
-            return url
-
-        # If it's a web URL, convert to .git URL
-        if url.startswith("https://github.com/"):
-            if not url.endswith(".git"):
-                url += ".git"
-            return url
-
-        # Handle other formats if needed
-        return url
+                try:
+                    shutil.rmtree(git_dir)
+                    logger.debug(f"Removed .git directory from: {repo_path}")
+                except Exception as e:
+                    logger.warning(f"Failed to remove .git directory: {str(e)}")
+            
+            # Tokenize the project
+            try:
+                self.tokenize_project(repo_path)
+                logger.info(f"Successfully tokenized project: {project_url}")
+            except Exception as e:
+                logger.error(f"Failed to tokenize project {project_url}: {str(e)}")
+                raise ValidationException(f"Tokenization failed: {str(e)}")
+            
+        finally:
+            # Clean up temporary directory with error handling
+            if temp_dir and Path(repo_path).exists():
+                try:
+                    shutil.rmtree(repo_path, ignore_errors=True)
+                    logger.debug(f"Cleaned up temporary directory: {temp_dir}")
+                except Exception as e:
+                    logger.warning(f"Failed to clean up temporary directory {temp_dir}: {str(e)}")
