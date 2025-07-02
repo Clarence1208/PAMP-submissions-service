@@ -217,11 +217,11 @@ class SimilarityDetectionService:
         return {
             'shared_blocks': shared_blocks,
             'total_shared_blocks': len(shared_blocks),
-            'average_similarity': sum(similarity_scores) / len(similarity_scores) if similarity_scores else 0,
+            'average_similarity': sum(similarity_scores) / len(similarity_scores) if similarity_scores else 0.0,
             'functions_file1': len(functions1),
             'functions_file2': len(functions2),
             'shared_percentage': len(shared_blocks) / max(len(functions1),
-                                                          len(functions2)) * 100 if functions1 or functions2 else 0
+                                                          len(functions2)) * 100 if functions1 or functions2 else 0.0
         }
 
     def _extract_functions_with_positions(self, tokens: List[Dict[str, Any]], source_code: str = "") -> Dict[str, Dict]:
