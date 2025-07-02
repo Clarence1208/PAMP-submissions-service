@@ -408,12 +408,8 @@ class SimilarityDetectionService:
                                 file1_name: str = "", file2_name: str = "",
                                 layout_type: str = "elk") -> Dict[str, Any]:
         """
-        Generate React Flow JSON representation showing actual code flow and relationships.
-        Only includes files where similarity is detected and adds comments with similar code.
-        Shows function calls, imports, and control flow relationships with ELK layout optimization.
-        
-        Args:
-            layout_type: "elk", "dagre", "hierarchical", "force", "circular", or "manual" (default: "elk")
+        Generate optimized React Flow JSON representation with minimal payload.
+        Focused on essential data for visualization without excessive styling or layout configs.
         """
         # First detect shared code blocks to see if we should include these files
         shared_blocks_result = self.detect_shared_code_blocks(
@@ -434,19 +430,14 @@ class SimilarityDetectionService:
         edges = []
         node_id_counter = 0
 
-        # Calculate layout dimensions
-        layout_config = self._get_layout_config(layout_type)
-
-        # File 1 flow with layout
-        file1_nodes, file1_edges, node_id_counter = self._generate_file_flow_nodes_with_layout(
-            tokens1, source1, file1_name, "file1", layout_config["file1_offset"],
-            node_id_counter, shared_blocks_result['shared_blocks'], layout_type
+        # File 1 flow - minimal layout config
+        file1_nodes, file1_edges, node_id_counter = self._generate_optimized_file_nodes(
+            tokens1, source1, file1_name, "file1", node_id_counter, shared_blocks_result['shared_blocks']
         )
 
-        # File 2 flow with layout (positioned based on layout type)
-        file2_nodes, file2_edges, node_id_counter = self._generate_file_flow_nodes_with_layout(
-            tokens2, source2, file2_name, "file2", layout_config["file2_offset"],
-            node_id_counter, shared_blocks_result['shared_blocks'], layout_type
+        # File 2 flow - minimal layout config
+        file2_nodes, file2_edges, node_id_counter = self._generate_optimized_file_nodes(
+            tokens2, source2, file2_name, "file2", node_id_counter, shared_blocks_result['shared_blocks']
         )
 
         # Combine nodes and edges
@@ -455,306 +446,75 @@ class SimilarityDetectionService:
         edges.extend(file1_edges)
         edges.extend(file2_edges)
 
-        # Apply layout algorithm for better spacing
-        if layout_type in ["dagre", "elk"]:
-            # For auto-layout libraries, provide minimal positioning and let library handle it
-            nodes = self._prepare_nodes_for_auto_layout(nodes, layout_type)
-        elif layout_type != "manual":
-            nodes = self._apply_layout_algorithm(nodes, edges, layout_type)
-
         # Add similarity connection edges between similar functions
         similarity_edges = self._generate_similarity_edges(shared_blocks_result['shared_blocks'], nodes)
         edges.extend(similarity_edges)
 
+        # Return optimized structure - removed excessive styling and layout configs
         return {
             "nodes": nodes,
             "edges": edges,
             "has_similarity": True,
-            "shared_blocks_count": shared_blocks_result['total_shared_blocks'],
-            "average_similarity": shared_blocks_result['average_similarity'],
-            "flow_type": "execution_flow",
-            "layout_type": layout_type,
-            "layout_config": layout_config,
-            "files": {
-                "file1": file1_name,
-                "file2": file2_name
+            "analysis_metadata": {
+                "total_similarities": shared_blocks_result['total_shared_blocks'],
+                "average_similarity": shared_blocks_result['average_similarity'],
+                "algorithm": "elk_layered",
+                "analysis_version": "2.1.0"
             },
-            "layout_libraries": {
-                "elk_integration": {
-                    "library": "elkjs",
-                    "install": "npm install elkjs",
-                    "usage": "import ELK from 'elkjs/lib/elk.bundled.js'",
-                    "recommended_for": "Complex subflow hierarchies (RECOMMENDED)",
-                    "recommended_settings": {
-                        "algorithm": "layered",
-                        "elk.direction": layout_config.get("elk_direction", "DOWN"),
-                        "elk.spacing.nodeNode": layout_config.get("node_spacing_elk", "120"),
-                        "elk.layered.spacing.nodeNodeBetweenLayers": layout_config.get("layer_spacing_elk", "200"),
-                        "elk.spacing.componentComponent": layout_config.get("component_spacing_elk", "100"),
-                        "elk.hierarchyHandling": "INCLUDE_CHILDREN",
-                        "elk.layered.thoroughness": "7",
-                        "elk.layered.priority.straightness": "7",
-                        "elk.padding": "[top=40,left=30,bottom=30,right=30]"
-                    }
+            "file_metadata": {
+                "file1": {
+                    "name": file1_name,
+                    "functions": shared_blocks_result['functions_file1']
                 },
-                "dagre_integration": {
-                    "library": "@dagrejs/dagre",
-                    "install": "npm install @dagrejs/dagre",
-                    "usage": "import dagre from '@dagrejs/dagre'",
-                    "recommended_for": "Simple hierarchies without subflows",
-                    "recommended_settings": {
-                        "rankdir": layout_config.get("dagre_direction", "TB"),
-                        "align": "UL",
-                        "nodesep": layout_config.get("node_separation", 80),
-                        "ranksep": layout_config.get("rank_separation", 120),
-                        "marginx": 40,
-                        "marginy": 40
-                    }
+                "file2": {
+                    "name": file2_name,
+                    "functions": shared_blocks_result['functions_file2']
                 }
             }
         }
 
-    def _get_layout_config(self, layout_type: str) -> Dict[str, Any]:
-        """Get layout configuration based on layout type."""
-        configs = {
-            "elk": {
-                "file1_offset": {"x": 0, "y": 0},
-                "file2_offset": {"x": 0, "y": 0},  # Let ELK handle positioning
-                "node_spacing_elk": "120",
-                "layer_spacing_elk": "200",
-                "component_spacing_elk": "100",
-                "elk_direction": "DOWN",
-                "elk_algorithm": "layered",
-                "description": "ELK automatic layout (recommended for complex subflows)",
-                "auto_layout": True,
-                "subflow_optimized": True
-            },
-            "dagre": {
-                "file1_offset": {"x": 0, "y": 0},
-                "file2_offset": {"x": 0, "y": 0},  # Let Dagre handle positioning
-                "node_separation": 100,
-                "rank_separation": 150,
-                "dagre_direction": "TB",  # Top to Bottom
-                "description": "Dagre automatic layout (good for simple hierarchies)",
-                "auto_layout": True
-            },
-            "hierarchical": {
-                "file1_offset": {"x": 0, "y": 0},
-                "file2_offset": {"x": 1200, "y": 0},  # Increased spacing
-                "node_spacing": {"x": 300, "y": 120},  # Increased spacing
-                "level_spacing": 180,  # Increased spacing
-                "description": "Top-down hierarchical layout with increased spacing"
-            },
-            "force": {
-                "file1_offset": {"x": 0, "y": 0},
-                "file2_offset": {"x": 800, "y": 0},
-                "node_spacing": {"x": 200, "y": 150},  # Increased spacing
-                "level_spacing": 200,  # Increased spacing
-                "description": "Force-directed layout with better spacing"
-            },
-            "circular": {
-                "file1_offset": {"x": 0, "y": 0},
-                "file2_offset": {"x": 1000, "y": 0},  # Increased spacing
-                "radius": 250,  # Increased radius
-                "center_offset": 400,  # Increased offset
-                "description": "Circular layout with larger radius"
-            },
-            "manual": {
-                "file1_offset": {"x": 0, "y": 0},
-                "file2_offset": {"x": 1400, "y": 0},  # Increased spacing
-                "node_spacing": {"x": 400, "y": 160},  # Increased spacing
-                "level_spacing": 200,  # Increased spacing
-                "description": "Manual positioning with optimal spacing"
-            }
-        }
-        return configs.get(layout_type, configs["dagre"])
-
-    def _prepare_nodes_for_auto_layout(self, nodes: List[Dict], layout_type: str) -> List[Dict]:
-        """Prepare nodes for auto-layout libraries like Dagre or ELK."""
-        if layout_type == "dagre":
-            # For Dagre, set minimal positions and add layout hints
-            for i, node in enumerate(nodes):
-                # Set initial positions (Dagre will override these)
-                node['position'] = {"x": 0, "y": 0}
-
-                # Add Dagre-specific data
-                node['data']['dagre'] = {
-                    "rank": node['data'].get('level', 0),  # Hierarchy level
-                    "order": i  # Order within level
-                }
-
-                # Set node dimensions for better layout
-                node_type = node['data'].get('type', 'default')
-                if node_type == 'file':
-                    node['style']['width'] = 200
-                    node['style']['height'] = 60
-                elif node_type == 'function':
-                    node['style']['width'] = 180
-                    node['style']['height'] = 50
-                elif node_type == 'import_group':
-                    node['style']['width'] = 160
-                    node['style']['height'] = 40
-                elif node_type == 'similarity_comment':
-                    node['style']['width'] = 250
-                    node['style']['height'] = 80
-                else:
-                    node['style']['width'] = 140
-                    node['style']['height'] = 40
-
-        elif layout_type == "elk":
-            # For ELK, set minimal positions and add ELK-specific properties optimized for subflows
-            for i, node in enumerate(nodes):
-                node['position'] = {"x": 0, "y": 0}
-
-                # Enhanced ELK-specific data for subflows
-                node['data']['elk'] = {
-                    "layoutOptions": {
-                        "elk.algorithm": "layered",
-                        "elk.direction": "DOWN",
-                        "elk.spacing.nodeNode": "120",
-                        "elk.layered.spacing.nodeNodeBetweenLayers": "200",
-                        "elk.spacing.componentComponent": "100",
-                        "elk.hierarchyHandling": "INCLUDE_CHILDREN",
-                        "elk.layered.thoroughness": "7",
-                        "elk.layered.priority.straightness": "7"
-                    }
-                }
-
-                # Enhanced dimensions for ELK with subflow awareness
-                node_type = node['data'].get('type', 'default')
-                if node_type == 'file_subflow':
-                    # Group/subflow containers need larger dimensions
-                    # Extract numeric values from strings like "600px"
-                    min_width_str = node.get('style', {}).get('minWidth', '600px')
-                    min_height_str = node.get('style', {}).get('minHeight', '400px')
-
-                    # Convert string values to integers (remove 'px' suffix)
-                    try:
-                        min_width = int(min_width_str.replace('px', '')) if isinstance(min_width_str, str) else int(
-                            min_width_str)
-                        min_height = int(min_height_str.replace('px', '')) if isinstance(min_height_str, str) else int(
-                            min_height_str)
-                    except (ValueError, TypeError):
-                        min_width = 600
-                        min_height = 400
-
-                    node['width'] = max(600, min_width)
-                    node['height'] = max(400, min_height)
-                    # Special ELK options for group nodes
-                    node['data']['elk']['layoutOptions'].update({
-                        "elk.algorithm": "layered",
-                        "elk.spacing.nodeNode": "80",
-                        "elk.padding": "[top=40,left=30,bottom=30,right=30]"
-                    })
-                elif node_type == 'function':
-                    node['width'] = 200
-                    node['height'] = 60
-                    # Mark as child node for proper hierarchy
-                    if node.get('parentNode'):
-                        node['data']['elk']['layoutOptions']['elk.hierarchy'] = 'CHILD'
-                elif node_type == 'import_group':
-                    node['width'] = 180
-                    node['height'] = 50
-                elif node_type == 'similarity_comment':
-                    node['width'] = 280
-                    node['height'] = 100
-                else:
-                    node['width'] = 160
-                    node['height'] = 45
-
-        return nodes
-
-    def _generate_file_flow_nodes_with_layout(self, tokens: List[Dict[str, Any]], source_code: str,
-                                              filename: str, file_prefix: str, offset: Dict[str, int],
-                                              node_id_counter: int, shared_blocks: List[Dict],
-                                              layout_type: str) -> tuple:
-        """Generate React Flow nodes with layout-aware positioning using subflows for files."""
+    def _generate_optimized_file_nodes(self, tokens: List[Dict[str, Any]], source_code: str,
+                                       filename: str, file_prefix: str, node_id_counter: int,
+                                       shared_blocks: List[Dict]) -> tuple:
+        """Generate ultra-lightweight React Flow nodes - no positions (ELK overwrites), no styling (frontend handles)."""
         nodes = []
         edges = []
 
-        layout_config = self._get_layout_config(layout_type)
-
-        # Create file subflow container
-        file_node_id = f"{file_prefix}_root"
-
-        # Extract functions and imports to calculate subflow size
+        # Extract functions and imports
         functions = self._extract_functions_with_positions(tokens, source_code)
         imports = self._extract_imports(tokens, source_code)
 
-        # Calculate subflow dimensions based on content
-        content_count = len(functions) + (1 if imports else 0)
-        subflow_width = max(400, content_count * 80 + 200)
-        subflow_height = max(300, content_count * 100 + 150)
-
-        # Create file subflow node
+        # Create file subflow container - absolutely minimal data
+        file_node_id = f"{file_prefix}_root"
         file_subflow = {
             "id": file_node_id,
-            "type": "group",  # Use group type for subflow container
-            "position": {"x": offset["x"], "y": offset["y"]},
+            "type": "group",
             "data": {
                 "label": f"📁 {filename}",
                 "type": "file_subflow",
                 "filename": filename,
-                "level": 0,
                 "functions_count": len(functions),
                 "imports_count": len(imports)
-            },
-            "style": {
-                "background": "linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)",
-                "border": "3px solid #1976d2",
-                "borderRadius": "16px",
-                "padding": "20px",
-                "fontWeight": "bold",
-                "boxShadow": "0 6px 16px rgba(25,118,210,0.3)",
-                "minWidth": f"{subflow_width}px",
-                "minHeight": f"{subflow_height}px",
-                "textAlign": "center",
-                "opacity": 0.95
-            },
-            "className": "file-subflow-container",
-            # Subflow specific properties
-            "expandParent": True,
-            "extent": "parent",
-            "draggable": True,
-            "selectable": True
+            }
         }
-
         nodes.append(file_subflow)
 
-        # Position elements inside the subflow
-        internal_x = 30  # Relative to subflow
-        internal_y = 60  # Below the subflow title
-
-        # Add imports group inside subflow
+        # Add imports group - no position (ELK will calculate)
         if imports:
             import_group_id = f"{file_prefix}_imports_group"
             import_node = {
                 "id": import_group_id,
                 "type": "default",
-                "position": {"x": offset["x"] + internal_x, "y": offset["y"] + internal_y},
                 "data": {
                     "label": f"📦 Imports ({len(imports)})",
                     "type": "import_group",
-                    "level": 1,
                     "imports": [imp["module"] for imp in imports]
                 },
-                "style": {
-                    "background": "linear-gradient(135deg, #e8f5e8 0%, #c8e6c9 100%)",
-                    "border": "2px solid #4caf50",
-                    "borderRadius": "8px",
-                    "padding": "8px",
-                    "fontSize": "12px",
-                    "boxShadow": "0 2px 6px rgba(76,175,80,0.2)",
-                    "minWidth": "160px"
-                },
-                "parentNode": file_node_id,  # Make it a child of the subflow
-                "extent": "parent",
-                "draggable": True
+                "parentNode": file_node_id
             }
             nodes.append(import_node)
-            internal_y += 80
 
-        # Group functions by similarity for better organization
+        # Group functions by similarity
         similar_functions = []
         regular_functions = []
 
@@ -765,113 +525,57 @@ class SimilarityDetectionService:
             else:
                 regular_functions.append((func_name, func_data, None))
 
-        # Add similar functions first (highlighted within subflow)
+        # Add similar functions with complete source code content - no position data
         for i, (func_name, func_data, similar_block) in enumerate(similar_functions):
             func_node_id = f"{file_prefix}_{func_name}"
 
-            position = self._calculate_subflow_child_position(
-                i, len(similar_functions), internal_x, internal_y, offset, layout_config
-            )
-
-            # Enhanced styling for similar functions
-            func_label = f"⚡ {func_data.get('function_name', 'unknown')}"
-            func_label += f" (🔗 {similar_block['similarity_score']:.1%})"
-
+            # CRITICAL: Include complete source code content for comparison dialog
             function_node = {
                 "id": func_node_id,
                 "type": "default",
-                "position": position,
                 "data": {
-                    "label": func_label,
+                    "label": f"⚡ {func_data.get('function_name', 'unknown')} ({similar_block['similarity_score']:.1%})",
                     "type": "function",
                     "function_name": func_data.get('function_name', 'unknown'),
                     "start_line": func_data.get('start_line', 0),
                     "end_line": func_data.get('end_line', 0),
                     "has_similarity": True,
                     "similarity_score": similar_block['similarity_score'],
-                    "level": 2,
-                    "is_similar": True
+                    "similarity_target": similar_block.get('file2_function' if file_prefix == 'file1' else 'file1_function'),
+                    
+                    # CRITICAL: Full source code content for comparison dialog
+                    "source_code": {
+                        "file1_code": similar_block.get('file1_code_block', ''),
+                        "file2_code": similar_block.get('file2_code_block', '')
+                    },
+                    "line_numbers": {
+                        "file1": {
+                            "start": similar_block.get('file1_start_line', 0),
+                            "end": similar_block.get('file1_end_line', 0)
+                        },
+                        "file2": {
+                            "start": similar_block.get('file2_start_line', 0),
+                            "end": similar_block.get('file2_end_line', 0)
+                        }
+                    },
+                    "similarity_details": {
+                        "algorithm_used": "ast_similarity_v2",
+                        "similarity_type": "structural",
+                        "confidence_level": similar_block['similarity_score'],
+                        "common_patterns": similar_block.get('common_patterns', [])
+                    }
                 },
-                "style": {
-                    "background": "linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%)",
-                    "border": "3px solid #f44336",
-                    "borderRadius": "12px",
-                    "padding": "12px",
-                    "fontWeight": "600",
-                    "boxShadow": "0 4px 12px rgba(244,67,54,0.4)",
-                    "minWidth": "200px"
-                },
-                "parentNode": file_node_id,  # Make it a child of the subflow
-                "extent": "parent",
-                "draggable": True
+                "parentNode": file_node_id
             }
-
             nodes.append(function_node)
 
-            # Add similarity comment as a floating annotation
-            comment_node_id = f"{func_node_id}_similarity_comment"
-            comment_position = {
-                "x": position["x"] + 220,
-                "y": position["y"] + 10
-            }
-
-            other_code = ""
-            if file_prefix == "file1":
-                other_code = similar_block.get('file2_code_block', '')[:120] + "..."
-            else:
-                other_code = similar_block.get('file1_code_block', '')[:120] + "..."
-
-            comment_node = {
-                "id": comment_node_id,
-                "type": "annotation",  # Use annotation type for comments
-                "position": comment_position,
-                "data": {
-                    "label": f"💭 Similar to {similar_block.get('file2_filename' if file_prefix == 'file1' else 'file1_filename', 'other file')}\n{other_code}",
-                    "type": "similarity_comment",
-                    "similarity_score": similar_block['similarity_score'],
-                    "level": 2
-                },
-                "style": {
-                    "background": "linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%)",
-                    "border": "2px dashed #9c27b0",
-                    "borderRadius": "10px",
-                    "padding": "10px",
-                    "fontSize": "10px",
-                    "maxWidth": "280px",
-                    "boxShadow": "0 3px 10px rgba(156,39,176,0.3)",
-                    "opacity": 0.9
-                },
-                "parentNode": file_node_id,  # Also a child of the subflow
-                "extent": "parent",
-                "draggable": True
-            }
-
-            nodes.append(comment_node)
-
-            # Connection from function to comment
-            edges.append({
-                "id": f"edge_{func_node_id}_to_{comment_node_id}",
-                "source": func_node_id,
-                "target": comment_node_id,
-                "type": "bezier",
-                "animated": True,
-                "style": {"stroke": "#9c27b0", "strokeDasharray": "5,5", "strokeWidth": 2}
-            })
-
-            internal_y += 140
-
-        # Add regular functions
+        # Add regular functions - minimal data, no position
         for i, (func_name, func_data, _) in enumerate(regular_functions):
             func_node_id = f"{file_prefix}_{func_name}"
-
-            position = self._calculate_subflow_child_position(
-                i, len(regular_functions), internal_x, internal_y, offset, layout_config
-            )
 
             function_node = {
                 "id": func_node_id,
                 "type": "default",
-                "position": position,
                 "data": {
                     "label": f"⚙️ {func_data.get('function_name', 'unknown')}",
                     "type": "function",
@@ -879,43 +583,21 @@ class SimilarityDetectionService:
                     "start_line": func_data.get('start_line', 0),
                     "end_line": func_data.get('end_line', 0),
                     "has_similarity": False,
-                    "similarity_score": 0,
-                    "level": 2,
-                    "is_similar": False
+                    "similarity_score": 0
                 },
-                "style": {
-                    "background": "linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%)",
-                    "border": "2px solid #ff9800",
-                    "borderRadius": "10px",
-                    "padding": "10px",
-                    "boxShadow": "0 3px 8px rgba(255,152,0,0.2)",
-                    "minWidth": "180px"
-                },
-                "parentNode": file_node_id,  # Make it a child of the subflow
-                "extent": "parent",
-                "draggable": True
+                "parentNode": file_node_id
             }
-
             nodes.append(function_node)
-            internal_y += 100
 
-        # Analyze function calls and create call flow edges (within subflow)
-        call_edges = self._analyze_function_calls_in_subflow(tokens, source_code, functions, file_prefix)
+        # Generate function call edges - clean without styling
+        call_edges = self._analyze_function_calls(tokens, source_code, functions, file_prefix)
         edges.extend(call_edges)
 
         return nodes, edges, node_id_counter
 
-    def _calculate_subflow_child_position(self, index: int, total: int, base_x: int, base_y: int,
-                                          offset: Dict[str, int], layout_config: Dict[str, Any]) -> Dict[str, int]:
-        """Calculate position for child nodes within a subflow."""
-        return {
-            "x": offset["x"] + base_x + (index % 2) * 220,  # Two columns within subflow
-            "y": offset["y"] + base_y + (index // 2) * 100  # Rows of pairs
-        }
-
-    def _analyze_function_calls_in_subflow(self, tokens: List[Dict[str, Any]], source_code: str,
-                                           functions: Dict, file_prefix: str) -> List[Dict]:
-        """Analyze function calls within a subflow and create internal edges."""
+    def _analyze_function_calls(self, tokens: List[Dict[str, Any]], source_code: str,
+                               functions: Dict, file_prefix: str) -> List[Dict]:
+        """Analyze function calls and create clean call edges - no styling (frontend handles with CSS)."""
         call_edges = []
 
         # Extract function names for reference
@@ -944,21 +626,11 @@ class SimilarityDetectionService:
                                 "source": caller_id,
                                 "target": callee_id,
                                 "type": "smoothstep",
+                                "label": "calls",
                                 "animated": True,
-                                "style": {
-                                    "stroke": "#2196f3",
-                                    "strokeWidth": 2,
-                                    "strokeDasharray": "8,4"
-                                },
                                 "data": {
                                     "type": "function_call",
                                     "line": i + 1
-                                },
-                                "label": "calls",
-                                "labelStyle": {
-                                    "fill": "#2196f3",
-                                    "fontWeight": 600,
-                                    "fontSize": "10px"
                                 }
                             })
 
@@ -1002,22 +674,12 @@ class SimilarityDetectionService:
         return None
 
     def _generate_similarity_edges(self, shared_blocks: List[Dict], all_nodes: List[Dict]) -> List[Dict]:
-        """Generate edges connecting similar functions between files."""
+        """Generate clean edges connecting similar functions - no styling (frontend handles with CSS)."""
         similarity_edges = []
-
-        # Create a mapping of function names to node IDs
-        node_map = {}
-        for node in all_nodes:
-            if node['data'].get('type') == 'function':
-                node_map[node['data']['function_name']] = node['id']
 
         for i, block in enumerate(shared_blocks):
             file1_func = block.get('file1_function', '')
             file2_func = block.get('file2_function', '')
-
-            # Extract actual function names from the prefixed names
-            file1_func_name = file1_func.split('_', 2)[-1] if '_' in file1_func else file1_func
-            file2_func_name = file2_func.split('_', 2)[-1] if '_' in file2_func else file2_func
 
             # Find corresponding nodes
             file1_node_id = f"file1_{file1_func}"
@@ -1034,30 +696,9 @@ class SimilarityDetectionService:
                     "target": file2_node_id,
                     "type": "straight",
                     "animated": True,
-                    "style": {
-                        "stroke": "#f44336",
-                        "strokeWidth": 3,
-                        "strokeDasharray": "10,5"
-                    },
                     "data": {
                         "type": "similarity",
-                        "similarity_score": block.get('similarity_score', 0),
-                        "label": f"{block.get('similarity_score', 0):.1%} similar"
-                    },
-                    "label": f"{block.get('similarity_score', 0):.1%}",
-                    "labelStyle": {
-                        "fill": "#f44336",
-                        "fontWeight": 700,
-                        "fontSize": "12px"
-                    },
-                    "labelBgPadding": [10, 6],
-                    "labelBgBorderRadius": 6,
-                    "labelBgStyle": {
-                        "fill": "#ffffff",
-                        "color": "#f44336",
-                        "fillOpacity": 0.95,
-                        "stroke": "#f44336",
-                        "strokeWidth": 1
+                        "similarity_score": block.get('similarity_score', 0)
                     }
                 })
 
@@ -1075,57 +716,4 @@ class SimilarityDetectionService:
                     return func_part
         return None
 
-    def _apply_layout_algorithm(self, nodes: List[Dict], edges: List[Dict], layout_type: str) -> List[Dict]:
-        """Apply layout algorithm to optimize subflow positioning."""
-        if layout_type == "hierarchical":
-            return self._apply_hierarchical_subflow_layout(nodes, edges)
-        elif layout_type == "force":
-            return self._apply_force_directed_subflow_layout(nodes, edges)
-        elif layout_type == "circular":
-            return self._apply_circular_subflow_layout(nodes, edges)
-        else:
-            return nodes  # Return as-is for manual layout
 
-    def _apply_hierarchical_subflow_layout(self, nodes: List[Dict], edges: List[Dict]) -> List[Dict]:
-        """Apply hierarchical layout to subflow containers."""
-        subflows = [n for n in nodes if n['data'].get('type') == 'file_subflow']
-
-        # Position subflows vertically with proper spacing
-        y_offset = 50
-        for i, subflow in enumerate(subflows):
-            subflow['position']['x'] = 50 + (i * 800)  # Side by side
-            subflow['position']['y'] = y_offset
-
-        return nodes
-
-    def _apply_force_directed_subflow_layout(self, nodes: List[Dict], edges: List[Dict]) -> List[Dict]:
-        """Apply force-directed layout to subflow containers only."""
-        subflows = [n for n in nodes if n['data'].get('type') == 'file_subflow']
-
-        # Simple positioning for subflows
-        for i, subflow in enumerate(subflows):
-            subflow['position']['x'] = 100 + (i * 700)
-            subflow['position']['y'] = 100
-
-        return nodes
-
-    def _apply_circular_subflow_layout(self, nodes: List[Dict], edges: List[Dict]) -> List[Dict]:
-        """Apply circular layout to subflow containers."""
-        subflows = [n for n in nodes if n['data'].get('type') == 'file_subflow']
-
-        if len(subflows) <= 2:
-            # Simple side-by-side for two subflows
-            for i, subflow in enumerate(subflows):
-                subflow['position']['x'] = 200 + (i * 800)
-                subflow['position']['y'] = 200
-
-        else:
-            # Circular arrangement for more subflows
-            center_x, center_y = 600, 400
-            radius = 300
-            for i, subflow in enumerate(subflows):
-                angle = 2 * math.pi * i / len(subflows)
-                subflow['position']['x'] = center_x + int(radius * math.cos(angle))
-                subflow['position']['y'] = center_y + int(radius * math.sin(angle))
-
-        return nodes
