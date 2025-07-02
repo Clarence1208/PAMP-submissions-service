@@ -295,15 +295,14 @@ async def compare_specific_files(file1: str, file2: str):
 
 
 @router.get("/react-flow-ast/files/{file1}/{file2}")
-async def get_react_flow_ast_for_files(file1: str, file2: str, layout: str = "elk"):
+async def get_react_flow_ast_for_files(file1: str, file2: str):
     """
-    Get React Flow AST representation for two specific files.
-    Returns AST structure with similarity comments only if similarities are detected.
+    Get optimized React Flow AST representation for two specific files.
+    Returns streamlined structure with complete source code content for comparison.
     
     Args:
         file1: Filename from calculator project (e.g., "main.py")
         file2: Filename from game project (e.g., "game_engine.py")
-        layout: Layout type - "elk", "dagre", "hierarchical", "force", "circular", or "manual" (default: "elk")
     """
     try:
         # Initialize services
@@ -329,9 +328,9 @@ async def get_react_flow_ast_for_files(file1: str, file2: str, layout: str = "el
         calc_tokens = tokenization_service.tokenize(calc_content, calc_file_path)
         game_tokens = tokenization_service.tokenize(game_content, game_file_path)
 
-        # Generate React Flow AST with layout
+        # Generate optimized React Flow AST
         react_flow_data = similarity_service.generate_react_flow_ast(
-            calc_tokens, game_tokens, calc_content, game_content, file1, file2, layout
+            calc_tokens, game_tokens, calc_content, game_content, file1, file2, "elk"
         )
 
         return {
@@ -340,80 +339,8 @@ async def get_react_flow_ast_for_files(file1: str, file2: str, layout: str = "el
                 "file1": file1,
                 "file2": file2
             },
-            "layout_used": layout,
-            "react_flow": react_flow_data,
-            "layout_integration_guide": {
-                "dagre_example": """
-// Install: npm install @dagrejs/dagre
-import dagre from '@dagrejs/dagre';
-import { Position } from 'reactflow';
-
-const getLayoutedElements = (nodes, edges, direction = 'TB') => {
-  const dagreGraph = new dagre.graphlib.Graph();
-  dagreGraph.setDefaultEdgeLabel(() => ({}));
-  dagreGraph.setGraph({ rankdir: direction, nodesep: 100, ranksep: 150 });
-
-  nodes.forEach((node) => {
-    dagreGraph.setNode(node.id, { width: node.style?.width || 180, height: node.style?.height || 50 });
-  });
-
-  edges.forEach((edge) => {
-    dagreGraph.setEdge(edge.source, edge.target);
-  });
-
-  dagre.layout(dagreGraph);
-
-  nodes.forEach((node) => {
-    const nodeWithPosition = dagreGraph.node(node.id);
-    node.targetPosition = Position.Top;
-    node.sourcePosition = Position.Bottom;
-    node.position = {
-      x: nodeWithPosition.x - (node.style?.width || 180) / 2,
-      y: nodeWithPosition.y - (node.style?.height || 50) / 2,
-    };
-  });
-
-  return { nodes, edges };
-};
-                """,
-                "elk_example": """
-// Install: npm install elkjs
-import ELK from 'elkjs/lib/elk.bundled.js';
-
-const elk = new ELK();
-
-const getLayoutedElements = async (nodes, edges) => {
-  const graph = {
-    id: 'root',
-    layoutOptions: {
-      'elk.algorithm': 'layered',
-      'elk.direction': 'DOWN',
-      'elk.spacing.nodeNode': '100',
-      'elk.layered.spacing.nodeNodeBetweenLayers': '150',
-    },
-    children: nodes.map((node) => ({
-      id: node.id,
-      width: node.width || node.style?.width || 180,
-      height: node.height || node.style?.height || 50,
-    })),
-    edges: edges.map((edge) => ({
-      id: edge.id,
-      sources: [edge.source],
-      targets: [edge.target],
-    })),
-  };
-
-  const layouted = await elk.layout(graph);
-  
-  layouted.children.forEach((node) => {
-    const reactFlowNode = nodes.find((n) => n.id === node.id);
-    reactFlowNode.position = { x: node.x, y: node.y };
-  });
-
-  return { nodes, edges };
-};
-                """
-            }
+            "layout_used": "elk_layered",
+            "react_flow": react_flow_data
         }
 
     except Exception as e:
@@ -421,13 +348,11 @@ const getLayoutedElements = async (nodes, edges) => {
 
 
 @router.get("/react-flow-ast/projects")
-async def get_react_flow_ast_for_projects(layout: str = "elk"):
+async def get_react_flow_ast_for_projects():
     """
-    Get React Flow AST representation for the test projects.
-    Returns AST structure with similarity comments for files where similarities are detected.
-    
-    Args:
-        layout: Layout type - "elk", "dagre", "hierarchical", "force", "circular", or "manual" (default: "elk")
+    Get optimized React Flow AST representation for the test projects.
+    Returns streamlined data structure with essential visualization data and complete source code content.
+    Uses ELK layout algorithm for consistent rendering.
     """
     try:
         # Initialize services
@@ -462,10 +387,10 @@ async def get_react_flow_ast_for_projects(layout: str = "elk"):
                     game_content = f.read()
                 game_tokens = tokenization_service.tokenize(game_content, game_file)
 
-                # Generate React Flow AST for this pair
+                # Generate optimized React Flow AST for this pair
                 react_flow_data = similarity_service.generate_react_flow_ast(
                     calc_tokens, game_tokens, calc_content, game_content,
-                    calc_file.name, game_file.name, layout
+                    calc_file.name, game_file.name, "elk"  # Always use ELK
                 )
 
                 # Only include if similarities were detected
@@ -481,7 +406,7 @@ async def get_react_flow_ast_for_projects(layout: str = "elk"):
         return {
             "timestamp": datetime.utcnow().isoformat(),
             "total_file_pairs_with_similarity": len(files_with_similarities),
-            "layout_used": layout,
+            "layout_used": "elk_layered",
             "file_pairs": files_with_similarities
         }
 
