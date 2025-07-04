@@ -1,5 +1,6 @@
 from datetime import datetime
 from typing import Optional
+from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -15,6 +16,7 @@ class SubmissionUpdateDto(BaseModel):
             "example": {
                 "description": "Updated description for the submission",
                 "status": "completed",
+                "submitted_by_uuid": "550e8400-e29b-41d4-a716-446655440005",
                 "file_size_bytes": 2048000,
                 "file_count": 30,
                 "updated_at": "2024-01-15T12:00:00Z",
@@ -24,6 +26,7 @@ class SubmissionUpdateDto(BaseModel):
 
     description: Optional[str] = None
     status: Optional[SubmissionStatus] = None
+    submitted_by_uuid: Optional[UUID] = None
     file_size_bytes: Optional[int] = None
     file_count: Optional[int] = None
     updated_at: datetime = Field(default_factory=datetime.utcnow)

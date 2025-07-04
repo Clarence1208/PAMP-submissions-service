@@ -250,6 +250,7 @@ curl -X POST http://localhost:8001/submissions \
     "group_uuid": "550e8400-e29b-41d4-a716-446655440001",
     "project_step_uuid": "550e8400-e29b-41d4-a716-446655440002",
     "description": "Final submission for step 1",
+    "submitted_by_uuid": "550e8400-e29b-41d4-a716-446655440005",
     "rules": [
       {
         "name": "file_presence",
@@ -278,7 +279,7 @@ curl -X POST http://localhost:8001/submissions \
     "group_uuid": "550e8400-e29b-41d4-a716-446655440001",
     "project_step_uuid": "550e8400-e29b-41d4-a716-446655440003",
     "description": "Final project submission",
-    "submitted_by": "John Doe",
+    "submitted_by_uuid": "550e8400-e29b-41d4-a716-446655440006",
     "rules": [
       {
         "name": "file_presence",
