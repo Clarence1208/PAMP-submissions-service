@@ -1,5 +1,6 @@
+import json
 import logging
-from typing import Any, Dict, List, Optional
+from typing import List, Optional
 from uuid import UUID
 
 from sqlmodel import Session
@@ -8,8 +9,7 @@ from app.domains.submissions.dto.create_submission_dto import CreateSubmissionDt
 from app.domains.submissions.dto.create_submission_response_dto import CreateSubmissionResponseDto
 from app.domains.submissions.dto.submission_response_dto import SubmissionResponseDto
 from app.domains.submissions.dto.submission_update_dto import SubmissionUpdateDto
-from app.domains.submissions.rules.rule_service import RuleExecutionResult, RuleService
-from app.domains.submissions.submissions_models import Submission
+from app.domains.submissions.rules.rule_service import RuleService
 from app.domains.submissions.submissions_repository import SubmissionRepository
 from app.shared.exceptions import NotFoundException, ValidationException
 
@@ -91,11 +91,17 @@ class SubmissionService:
                     # Log the detailed failure information
                     logger.warning(f"Rule validation failed: {error_response}")
 
-                    # Raise structured validation exception
-                    raise ValidationException(
-                        f"Submission validation failed: {len(failed_rules)} of {len(rule_results)} rules failed",
-                        details=error_response,
-                    )
+                    # If force_rules is True, continue with submission creation but store failed results
+                    if submission_data.force_rules:
+                        logger.info("force_rules is True - continuing with submission creation despite rule failures")
+                        # Store rule results for later storage in the repository
+                        rule_results_json = json.dumps([r.to_dict() for r in rule_results])
+                    else:
+                        # Raise structured validation exception
+                        raise ValidationException(
+                            f"Submission validation failed: {len(failed_rules)} of {len(rule_results)} rules failed",
+                            details=error_response,
+                        )
 
                 logger.info("All validation rules passed successfully")
 
@@ -112,7 +118,10 @@ class SubmissionService:
 
         # Create the submission
         submission = self.repository.create(
-            submission_data=submission_data, ip_address=ip_address, user_agent=user_agent
+            submission_data=submission_data, 
+            ip_address=ip_address, 
+            user_agent=user_agent,
+            rule_results_json=rule_results_json if 'rule_results_json' in locals() else None
         )
 
         # Add rule execution results to the response if any were executed
@@ -123,11 +132,20 @@ class SubmissionService:
             "data": SubmissionResponseDto.model_validate(submission.model_dump()),
         }
 
+        # Include rule results from execution or from stored submission
         if rule_results:
             response_data["rule_results"] = [
                 {"rule_name": r.rule_name, "passed": r.passed, "message": r.message, "params": r.params}
                 for r in rule_results
             ]
+        elif submission.rule_results:
+            # Parse stored rule results from the submission
+            try:
+                stored_results = json.loads(submission.rule_results)
+                response_data["rule_results"] = stored_results
+            except (json.JSONDecodeError, TypeError) as e:
+                logger.warning(f"Failed to parse stored rule results: {e}")
+                # Don't include rule_results if parsing fails
 
         return CreateSubmissionResponseDto(**response_data)
 
@@ -138,12 +156,23 @@ class SubmissionService:
         if not submission:
             raise NotFoundException(f"Submission with ID {submission_id} not found")
 
-        return CreateSubmissionResponseDto(
-            success=True,
-            message="Submission retrieved successfully",
-            submission_id=submission.id,
-            data=SubmissionResponseDto.model_validate(submission.model_dump()),
-        )
+        response_data = {
+            "success": True,
+            "message": "Submission retrieved successfully",
+            "submission_id": submission.id,
+            "data": SubmissionResponseDto.model_validate(submission.model_dump()),
+        }
+
+        # Include stored rule results if they exist
+        if submission.rule_results:
+            try:
+                stored_results = json.loads(submission.rule_results)
+                response_data["rule_results"] = stored_results
+            except (json.JSONDecodeError, TypeError) as e:
+                logger.warning(f"Failed to parse stored rule results: {e}")
+                # Don't include rule_results if parsing fails
+
+        return CreateSubmissionResponseDto(**response_data)
 
     def get_submissions_by_project_and_group(self, project_uuid: UUID, group_uuid: UUID) -> List[SubmissionResponseDto]:
         """Get all submissions for a specific project and group"""
@@ -218,10 +247,8 @@ class SubmissionService:
         # Validate link format based on type
         link = submission_data.link.lower()
 
-        if ".s3." not in link or "amazonaws.com" not in link:
-            raise ValidationException("S3 link must include bucket and path")
 
-        elif "github.com" in link:
+        if "github.com" in link:
             # GitHub repository validation
             if "/tree/" in link or "/blob/" in link:
                 raise ValidationException(

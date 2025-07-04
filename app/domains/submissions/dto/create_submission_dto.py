@@ -1,8 +1,8 @@
 from datetime import datetime
-from typing import Any, List, Optional
+from typing import List, Optional
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.domains.submissions.dto.rule_dto import RuleDto
 from app.domains.submissions.submissions_models import LinkType
@@ -36,6 +36,7 @@ class CreateSubmissionDto(BaseModel):
                         },
                     },
                 ],
+                "force_rules": False,
             }
         },
     )
@@ -56,6 +57,10 @@ class CreateSubmissionDto(BaseModel):
 
     # Rules as properly typed DTOs for OpenAPI schema
     rules: Optional[List[RuleDto]] = None
+
+    # Force rules parameter - if True, submission is created even if rules fail
+    force_rules: Optional[bool] = Field(default=False,
+                                        description="If True, submission is created even if validation rules fail")
 
     @field_validator("link")
     def validate_link(cls, v):
