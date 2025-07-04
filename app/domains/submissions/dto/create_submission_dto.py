@@ -59,8 +59,9 @@ class CreateSubmissionDto(BaseModel):
     rules: Optional[List[RuleDto]] = None
 
     # Force rules parameter - if True, submission is created even if rules fail
-    force_rules: Optional[bool] = Field(default=False,
-                                        description="If True, submission is created even if validation rules fail")
+    force_rules: Optional[bool] = Field(
+        default=False, description="If True, submission is created even if validation rules fail"
+    )
 
     @field_validator("link")
     def validate_link(cls, v):
