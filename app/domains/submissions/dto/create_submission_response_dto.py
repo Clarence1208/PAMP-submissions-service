@@ -20,7 +20,7 @@ class CreateSubmissionResponseDto(BaseModel):
                     "link": "https://github.com/user/repository.git",
                     "project_uuid": "550e8400-e29b-41d4-a716-446655440001",
                     "group_uuid": "550e8400-e29b-41d4-a716-446655440002",
-                    "project_step": "step_1",
+                    "project_step_uuid": "550e8400-e29b-41d4-a716-446655440003",
                     "status": "pending",
                 },
                 "rule_results": [

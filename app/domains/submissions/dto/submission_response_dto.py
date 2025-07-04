@@ -4,7 +4,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
 
-from app.domains.submissions.submissions_models import LinkType, ProjectStep, SubmissionStatus
+from app.domains.submissions.submissions_models import LinkType, SubmissionStatus
 
 
 class SubmissionResponseDto(BaseModel):
@@ -18,7 +18,7 @@ class SubmissionResponseDto(BaseModel):
                 "link": "https://github.com/user/repository.git",
                 "project_uuid": "550e8400-e29b-41d4-a716-446655440001",
                 "group_uuid": "550e8400-e29b-41d4-a716-446655440002",
-                "project_step": "step_1",
+                "project_step_uuid": "550e8400-e29b-41d4-a716-446655440003",
                 "link_type": "github",
                 "description": "Final submission for project step 1",
                 "submitted_by": "John Doe",
@@ -38,7 +38,7 @@ class SubmissionResponseDto(BaseModel):
     link: str
     project_uuid: UUID
     group_uuid: UUID
-    project_step: ProjectStep
+    project_step_uuid: UUID
     link_type: Optional[LinkType]
     description: Optional[str]
     submitted_by: Optional[str]

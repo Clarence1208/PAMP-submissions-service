@@ -248,7 +248,7 @@ curl -X POST http://localhost:8001/submissions \
     "link": "https://github.com/user/repository.git",
     "project_uuid": "550e8400-e29b-41d4-a716-446655440000",
     "group_uuid": "550e8400-e29b-41d4-a716-446655440001",
-    "project_step": "step_1",
+    "project_step_uuid": "550e8400-e29b-41d4-a716-446655440002",
     "description": "Final submission for step 1",
     "rules": [
       {
@@ -276,7 +276,7 @@ curl -X POST http://localhost:8001/submissions \
     "link": "https://github.com/student/project.git",
     "project_uuid": "550e8400-e29b-41d4-a716-446655440000",
     "group_uuid": "550e8400-e29b-41d4-a716-446655440001",
-    "project_step": "final",
+    "project_step_uuid": "550e8400-e29b-41d4-a716-446655440003",
     "description": "Final project submission",
     "submitted_by": "John Doe",
     "rules": [
@@ -342,7 +342,7 @@ curl -X POST http://localhost:8001/submissions \
     "link": "https://github.com/user/repository.git",
     "project_uuid": "550e8400-e29b-41d4-a716-446655440000",
     "group_uuid": "550e8400-e29b-41d4-a716-446655440001",
-    "project_step": "step_1",
+    "project_step_uuid": "550e8400-e29b-41d4-a716-446655440002",
     "link_type": "github",
     "description": "Final submission for step 1",
     "id": "uuid-here",
@@ -521,7 +521,7 @@ Swagger UI is available at [http://localhost:8000/swagger-ui](http://localhost:8
        "link": "https://github.com/octocat/Hello-World.git",
        "project_uuid": "550e8400-e29b-41d4-a716-446655440000",
        "group_uuid": "550e8400-e29b-41d4-a716-446655440001",
-       "project_step": "step_1",
+       "project_step_uuid": "550e8400-e29b-41d4-a716-446655440004",
        "rules": [
          {
            "name": "file_presence",

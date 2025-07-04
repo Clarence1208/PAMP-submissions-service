@@ -8,7 +8,6 @@ from app.domains.submissions.dto.create_submission_dto import CreateSubmissionDt
 from app.domains.submissions.dto.create_submission_response_dto import CreateSubmissionResponseDto
 from app.domains.submissions.dto.submission_response_dto import SubmissionResponseDto
 from app.domains.submissions.dto.submission_update_dto import SubmissionUpdateDto
-from app.domains.submissions.submissions_models import ProjectStep
 from app.domains.submissions.submissions_service import SubmissionService
 from app.shared.database import get_session
 from app.shared.exceptions import DatabaseException, NotFoundException, ValidationException
@@ -22,13 +21,13 @@ def get_submission_service(session: Session = Depends(get_session)) -> Submissio
 
 
 def get_client_info(request: Request) -> tuple[Optional[str], Optional[str]]:
-    """Extract client IP and User-Agent from request"""
-    # Get real IP address (considering proxies)
-    ip_address = request.headers.get("X-Forwarded-For")
-    if ip_address:
-        ip_address = ip_address.split(",")[0].strip()
+    """Extract client IP and user agent from request"""
+    # Get real IP address considering reverse proxy headers
+    forwarded_for = request.headers.get("X-Forwarded-For")
+    if forwarded_for:
+        ip_address = forwarded_for.split(",")[0].strip()
     else:
-        ip_address = request.headers.get("X-Real-IP") or request.client.host
+        ip_address = request.client.host if request.client else None
 
     user_agent = request.headers.get("User-Agent")
     return ip_address, user_agent
@@ -48,7 +47,7 @@ async def create_submission(
     - **link**: URL to S3, GitHub, or GitLab repository (required)
     - **project_uuid**: UUID of the associated project (required)
     - **group_uuid**: UUID of the associated group (required)
-    - **project_step**: Project step identifier (required)
+    - **project_step_uuid**: UUID of the project step (required)
     - **upload_date_time**: Upload timestamp (optional, defaults to current time)
     - **description**: Optional description of the submission
     - **submitted_by**: Name or identifier of the submitter
@@ -113,13 +112,13 @@ async def get_submissions_by_project_and_group(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/project/{project_uuid}/step/{project_step}", response_model=List[SubmissionResponseDto])
+@router.get("/project/{project_uuid}/step/{project_step_uuid}", response_model=List[SubmissionResponseDto])
 async def get_submissions_by_project_step(
-    project_uuid: UUID, project_step: ProjectStep, service: SubmissionService = Depends(get_submission_service)
+    project_uuid: UUID, project_step_uuid: UUID, service: SubmissionService = Depends(get_submission_service)
 ):
     """Get all submissions for a specific project step"""
     try:
-        return service.get_submissions_by_project_step(project_uuid, project_step.value)
+        return service.get_submissions_by_project_step(project_uuid, project_step_uuid)
     except DatabaseException as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -137,7 +136,9 @@ async def get_submission_statistics(
 
 @router.put("/{submission_id}", response_model=CreateSubmissionResponseDto)
 async def update_submission(
-    submission_id: UUID, update_data: SubmissionUpdateDto, service: SubmissionService = Depends(get_submission_service)
+    submission_id: UUID,
+    update_data: SubmissionUpdateDto,
+    service: SubmissionService = Depends(get_submission_service),
 ):
     """Update a submission"""
     try:
