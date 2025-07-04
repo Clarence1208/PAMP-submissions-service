@@ -4,7 +4,6 @@ Handles code similarity analysis, comparison, and shared code block detection.
 """
 
 import logging
-import math
 from typing import List, Dict, Any
 
 logger = logging.getLogger(__name__)
@@ -18,7 +17,7 @@ class SimilarityDetectionService:
     def prepare_for_similarity(self, tokens: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """
         Prepare tokens for similarity comparison by filtering and normalizing elements.
-        
+
         Keeps elements relevant to code structure and logic:
         - Control flow (if, for, while, etc.)
         - Function/method definitions and calls
@@ -26,7 +25,7 @@ class SimilarityDetectionService:
         - Operators
         - Import statements
         - Data structures (lists, dicts, etc.)
-        
+
         Filters out elements that don't affect logic:
         - Comments
         - String literals (normalize to generic placeholder)
@@ -367,16 +366,16 @@ class SimilarityDetectionService:
         # Create normalized sequences focusing on control flow and operations
         seq1 = self._create_structural_sequence(sim_tokens1)
         seq2 = self._create_structural_sequence(sim_tokens2)
-        
+
         structural_similarity = self._sequence_similarity(seq1, seq2)
 
         # 2. TOKEN TYPE PATTERN SIMILARITY
         types1 = [token['type'] for token in sim_tokens1]
         types2 = [token['type'] for token in sim_tokens2]
-        
+
         # Use sequence similarity instead of just set intersection
         type_sequence_similarity = self._sequence_similarity(types1, types2)
-        
+
         # Also check set-based type similarity (for different order but same operations)
         common_types = set(types1) & set(types2)
         total_types = set(types1) | set(types2)
@@ -399,14 +398,14 @@ class SimilarityDetectionService:
         len1, len2 = len(sim_tokens1), len(sim_tokens2)
         length_ratio = min(len1, len2) / max(len1, len2) if max(len1, len2) > 0 else 0.0
         length_penalty = 1.0 if length_ratio > 0.5 else (0.8 if length_ratio > 0.3 else 0.6)
-        
+
         similarity_score = (
-            structural_similarity * 0.4 +      # Most important: overall structure
-            type_sequence_similarity * 0.25 +  # Token sequence patterns
-            flow_similarity * 0.2 +            # Control flow logic
-            operation_similarity * 0.1 +       # Mathematical operations
-            type_set_similarity * 0.05         # Basic type overlap
-        ) * length_penalty  # Apply length penalty
+                                   structural_similarity * 0.4 +  # Most important: overall structure
+                                   type_sequence_similarity * 0.25 +  # Token sequence patterns
+                                   flow_similarity * 0.2 +  # Control flow logic
+                                   operation_similarity * 0.1 +  # Mathematical operations
+                                   type_set_similarity * 0.05  # Basic type overlap
+                           ) * length_penalty  # Apply length penalty
 
         return {
             'similarity_score': similarity_score,
@@ -423,7 +422,7 @@ class SimilarityDetectionService:
         sequence = []
         for token in tokens:
             token_type = token.get('type', '')
-            
+
             # Map similar concepts to same structural element
             if token_type in ['function_definition', 'method_definition']:
                 sequence.append('FUNC_DEF')
@@ -449,7 +448,7 @@ class SimilarityDetectionService:
                 sequence.append('VAR')
             else:
                 sequence.append(token_type.upper())
-        
+
         return sequence
 
     def _extract_logical_flow(self, tokens: List[Dict[str, Any]]) -> List[str]:
@@ -457,10 +456,10 @@ class SimilarityDetectionService:
         flow = []
         for token in tokens:
             token_type = token.get('type', '')
-            if token_type in ['if_statement', 'elif_clause', 'else_clause', 
-                            'for_statement', 'while_statement', 'break_statement', 
-                            'continue_statement', 'return_statement', 'try_statement',
-                            'except_clause', 'finally_clause']:
+            if token_type in ['if_statement', 'elif_clause', 'else_clause',
+                              'for_statement', 'while_statement', 'break_statement',
+                              'continue_statement', 'return_statement', 'try_statement',
+                              'except_clause', 'finally_clause']:
                 flow.append(token_type)
         return flow
 
@@ -470,9 +469,9 @@ class SimilarityDetectionService:
         for token in tokens:
             token_type = token.get('type', '')
             token_text = token.get('text', '').strip()
-            
-            if token_type in ['binary_operator', 'unary_operator', 'comparison_operator', 
-                            'boolean_operator', 'augmented_assignment']:
+
+            if token_type in ['binary_operator', 'unary_operator', 'comparison_operator',
+                              'boolean_operator', 'augmented_assignment']:
                 # Normalize common operations
                 if token_text in ['+', '-', '*', '/', '//', '%', '**']:
                     operations.append('MATH_OP')
@@ -488,31 +487,23 @@ class SimilarityDetectionService:
         """Calculate similarity between two sequences using longest common subsequence."""
         if not seq1 or not seq2:
             return 0.0
-        
+
         # Use dynamic programming to find longest common subsequence
         m, n = len(seq1), len(seq2)
         dp = [[0] * (n + 1) for _ in range(m + 1)]
-        
+
         for i in range(1, m + 1):
             for j in range(1, n + 1):
-                if seq1[i-1] == seq2[j-1]:
-                    dp[i][j] = dp[i-1][j-1] + 1
+                if seq1[i - 1] == seq2[j - 1]:
+                    dp[i][j] = dp[i - 1][j - 1] + 1
                 else:
-                    dp[i][j] = max(dp[i-1][j], dp[i][j-1])
-        
+                    dp[i][j] = max(dp[i - 1][j], dp[i][j - 1])
+
         lcs_length = dp[m][n]
         max_length = max(m, n)
-        
+
         # Calculate similarity as LCS ratio with bonus for exact matches
         if m == n and lcs_length == m:
             return 1.0  # Perfect match
-        
+
         return lcs_length / max_length
-
-
-
-
-
-
-
-

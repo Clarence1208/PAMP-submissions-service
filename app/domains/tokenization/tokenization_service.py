@@ -1,6 +1,6 @@
+import logging
 import shutil
 import subprocess
-import logging
 import tempfile
 from pathlib import Path
 from typing import List, Dict, Any, Optional
@@ -8,10 +8,11 @@ from typing import List, Dict, Any, Optional
 import tree_sitter_python as tspython
 from tree_sitter import Parser, Language
 
-from app.shared.exceptions import ValidationException
 from app.domains.detection.similarity_detection_service import SimilarityDetectionService
+from app.shared.exceptions import ValidationException
 
 logger = logging.getLogger(__name__)
+
 
 class TokenizationService:
     def __init__(self):
@@ -82,7 +83,7 @@ class TokenizationService:
                 'type': node.type,
                 'text': token_text,
                 'start': node.start_point[0],  # Just row number
-                'end': node.end_point[0]       # Just row number
+                'end': node.end_point[0]  # Just row number
             }
             tokens.append(token)
 
@@ -127,7 +128,7 @@ class TokenizationService:
                     # Optionally save tokens or process further
                 except Exception as e:
                     logger.error(f"Failed to tokenize {file_path}: {str(e)}")
-            else :
+            else:
                 logger.warning(f"Skipping non-file path: {file_path}")
 
     def _create_temp_directory(self) -> str:
