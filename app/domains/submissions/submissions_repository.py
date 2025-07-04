@@ -17,8 +17,11 @@ class SubmissionRepository:
         self.session = session
 
     def create(
-            self, submission_data: CreateSubmissionDto, ip_address: Optional[str] = None,
-            user_agent: Optional[str] = None, rule_results_json: Optional[str] = None
+        self,
+        submission_data: CreateSubmissionDto,
+        ip_address: Optional[str] = None,
+        user_agent: Optional[str] = None,
+        rule_results_json: Optional[str] = None,
     ) -> Submission:
         """Create a new submission"""
         try:
@@ -154,8 +157,9 @@ class SubmissionRepository:
         except Exception as e:
             raise DatabaseException(f"Failed to count submissions: {str(e)}")
 
-    def check_duplicate_submission(self, project_uuid: UUID, group_uuid: UUID, project_step_uuid: UUID,
-                                   link: str) -> bool:
+    def check_duplicate_submission(
+        self, project_uuid: UUID, group_uuid: UUID, project_step_uuid: UUID, link: str
+    ) -> bool:
         """Check if a duplicate submission exists"""
         try:
             statement = select(Submission).where(

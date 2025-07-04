@@ -118,10 +118,10 @@ class SubmissionService:
 
         # Create the submission
         submission = self.repository.create(
-            submission_data=submission_data, 
-            ip_address=ip_address, 
+            submission_data=submission_data,
+            ip_address=ip_address,
             user_agent=user_agent,
-            rule_results_json=rule_results_json if 'rule_results_json' in locals() else None
+            rule_results_json=rule_results_json if "rule_results_json" in locals() else None,
         )
 
         # Add rule execution results to the response if any were executed
@@ -179,7 +179,9 @@ class SubmissionService:
         submissions = self.repository.get_by_project_and_group(project_uuid, group_uuid)
         return [SubmissionResponseDto.model_validate(sub.model_dump()) for sub in submissions]
 
-    def get_submissions_by_project_step(self, project_uuid: UUID, project_step_uuid: UUID) -> List[SubmissionResponseDto]:
+    def get_submissions_by_project_step(
+        self, project_uuid: UUID, project_step_uuid: UUID
+    ) -> List[SubmissionResponseDto]:
         """Get all submissions for a specific project step"""
         submissions = self.repository.get_by_project_step(project_uuid, project_step_uuid)
         return [SubmissionResponseDto.model_validate(sub.model_dump()) for sub in submissions]
@@ -246,7 +248,6 @@ class SubmissionService:
 
         # Validate link format based on type
         link = submission_data.link.lower()
-
 
         if "github.com" in link:
             # GitHub repository validation
