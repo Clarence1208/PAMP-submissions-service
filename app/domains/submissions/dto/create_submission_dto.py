@@ -5,7 +5,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, field_validator
 
 from app.domains.submissions.dto.rule_dto import RuleDto
-from app.domains.submissions.submissions_models import LinkType, ProjectStep
+from app.domains.submissions.submissions_models import LinkType
 
 
 class CreateSubmissionDto(BaseModel):
@@ -20,7 +20,7 @@ class CreateSubmissionDto(BaseModel):
                 "link": "https://github.com/user/repository.git",
                 "project_uuid": "550e8400-e29b-41d4-a716-446655440000",
                 "group_uuid": "550e8400-e29b-41d4-a716-446655440001",
-                "project_step": "step_1",
+                "project_step_uuid": "550e8400-e29b-41d4-a716-446655440002",
                 "description": "Final submission for project step 1",
                 "submitted_by": "John Doe",
                 "file_size_bytes": 1024000,
@@ -44,7 +44,7 @@ class CreateSubmissionDto(BaseModel):
     link: str
     project_uuid: UUID
     group_uuid: UUID
-    project_step: ProjectStep
+    project_step_uuid: UUID
 
     # Optional fields that will be useful
     link_type: Optional[LinkType] = None
@@ -65,7 +65,7 @@ class CreateSubmissionDto(BaseModel):
 
         # Basic validation for different link types
         v_lower = v.lower()
-        if v_lower.startswith("s3://"):
+        if ".s3." in v_lower or "amazonaws.com" in v_lower:
             return v
         elif "github.com" in v_lower or "gitlab.com" in v_lower:
             if not v_lower.startswith("https://"):

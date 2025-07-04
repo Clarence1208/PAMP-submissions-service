@@ -27,7 +27,7 @@ class SubmissionRepository:
             # Determine link type based on the link
             link_type = None
             link_lower = submission_data.link.lower()
-            if link_lower.startswith("s3://"):
+            if ".s3." in link_lower or "amazonaws.com" in link_lower:
                 link_type = "s3"
             elif "github.com" in link_lower:
                 link_type = "github"
@@ -75,12 +75,12 @@ class SubmissionRepository:
         except Exception as e:
             raise DatabaseException(f"Failed to get submissions: {str(e)}")
 
-    def get_by_project_step(self, project_uuid: UUID, project_step: str) -> List[Submission]:
+    def get_by_project_step(self, project_uuid: UUID, project_step_uuid: UUID) -> List[Submission]:
         """Get all submissions for a specific project step"""
         try:
             statement = (
                 select(Submission)
-                .where(Submission.project_uuid == project_uuid, Submission.project_step == project_step)
+                .where(Submission.project_uuid == project_uuid, Submission.project_step_uuid == project_step_uuid)
                 .order_by(Submission.upload_date_time.desc())
             )
             return list(self.session.exec(statement).all())
@@ -148,13 +148,13 @@ class SubmissionRepository:
         except Exception as e:
             raise DatabaseException(f"Failed to count submissions: {str(e)}")
 
-    def check_duplicate_submission(self, project_uuid: UUID, group_uuid: UUID, project_step: str, link: str) -> bool:
+    def check_duplicate_submission(self, project_uuid: UUID, group_uuid: UUID, project_step_uuid: UUID, link: str) -> bool:
         """Check if a duplicate submission exists"""
         try:
             statement = select(Submission).where(
                 Submission.project_uuid == project_uuid,
                 Submission.group_uuid == group_uuid,
-                Submission.project_step == project_step,
+                Submission.project_step_uuid == project_step_uuid,
                 Submission.link == link,
             )
             existing = self.session.exec(statement).first()

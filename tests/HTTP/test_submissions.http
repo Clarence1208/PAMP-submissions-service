@@ -9,7 +9,7 @@ Content-Type: application/json
   "link": "s3://my-bucket/submissions/project1/group1/step1.zip",
   "project_uuid": "123e4567-e89b-12d3-a456-426614174000",
   "group_uuid": "987fcdeb-51a2-43d1-9f12-345678901234",
-  "project_step": "step_1",
+  "project_step_uuid": "111e1111-1111-1111-1111-111111111111",
   "description": "Initial submission for step 1",
   "submitted_by": "John Doe",
   "file_size_bytes": 1024000,
@@ -26,7 +26,7 @@ Content-Type: application/json
   "link": "https://github.com/user/project-repo",
   "project_uuid": "123e4567-e89b-12d3-a456-426614174000",
   "group_uuid": "987fcdeb-51a2-43d1-9f12-345678901234",
-  "project_step": "step_2",
+  "project_step_uuid": "222e2222-2222-2222-2222-222222222222",
   "description": "GitHub repository submission",
   "submitted_by": "Jane Smith"
 }
@@ -41,7 +41,7 @@ Content-Type: application/json
   "link": "https://gitlab.com/user/project-repo",
   "project_uuid": "123e4567-e89b-12d3-a456-426614174000",
   "group_uuid": "987fcdeb-51a2-43d1-9f12-345678901234",
-  "project_step": "final",
+  "project_step_uuid": "333e3333-3333-3333-3333-333333333333",
   "description": "Final project submission",
   "submitted_by": "Bob Johnson"
 }
@@ -61,7 +61,7 @@ Accept: application/json
 ###
 
 ### Get submissions by project step
-GET http://127.0.0.1:8001/submissions/project/123e4567-e89b-12d3-a456-426614174000/step/step_1
+GET http://127.0.0.1:8001/submissions/project/123e4567-e89b-12d3-a456-426614174000/step/111e1111-1111-1111-1111-111111111111
 Accept: application/json
 
 ###
@@ -109,7 +109,7 @@ Content-Type: application/json
   "link": "s3://my-bucket/submissions/project1/group1/step1.zip",
   "project_uuid": "123e4567-e89b-12d3-a456-426614174000",
   "group_uuid": "987fcdeb-51a2-43d1-9f12-345678901234",
-  "project_step": "step_1",
+  "project_step_uuid": "111e1111-1111-1111-1111-111111111111",
   "description": "Duplicate submission test"
 }
 
@@ -123,6 +123,6 @@ Content-Type: application/json
   "link": "s3://my-bucket/submissions/project1/group1/step1.zip",
   "project_uuid": "123e4567-e89b-12d3-a456-426614174000",
   "group_uuid": "987fcdeb-51a2-43d1-9f12-345678901234",
-  "project_step": "step_1",
+  "project_step_uuid": "111e1111-1111-1111-1111-111111111111",
   "description": "Allowed duplicate submission"
 } 

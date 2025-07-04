@@ -7,17 +7,6 @@ from pydantic import field_validator
 from sqlmodel import Field, SQLModel
 
 
-class ProjectStep(str, Enum):
-    """Enumeration for project steps"""
-
-    STEP_1 = "step_1"
-    STEP_2 = "step_2"
-    STEP_3 = "step_3"
-    STEP_4 = "step_4"
-    STEP_5 = "step_5"
-    FINAL = "final"
-
-
 class SubmissionStatus(str, Enum):
     """Enumeration for submission status"""
 
@@ -42,7 +31,7 @@ class SubmissionBase(SQLModel):
     link: str = Field(description="Link to S3, GitHub, or GitLab repository")
     project_uuid: UUID = Field(description="UUID of the associated project")
     group_uuid: UUID = Field(description="UUID of the associated group")
-    project_step: ProjectStep = Field(description="Project step identifier")
+    project_step_uuid: UUID = Field(description="UUID of the project step")
 
     # Optional fields that will be useful
     link_type: Optional[LinkType] = Field(default=None, description="Type of the submission link")
@@ -61,7 +50,7 @@ class SubmissionBase(SQLModel):
 
         # Basic validation for different link types
         v_lower = v.lower()
-        if v_lower.startswith("s3://"):
+        if ".s3." in v_lower or "amazonaws.com" in v_lower:
             return v
         elif "github.com" in v_lower or "gitlab.com" in v_lower:
             if not v_lower.startswith("https://"):

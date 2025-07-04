@@ -38,7 +38,7 @@ class SubmissionService:
             is_duplicate = self.repository.check_duplicate_submission(
                 project_uuid=submission_data.project_uuid,
                 group_uuid=submission_data.group_uuid,
-                project_step=submission_data.project_step,
+                project_step_uuid=submission_data.project_step_uuid,
                 link=submission_data.link,
             )
 
@@ -150,9 +150,9 @@ class SubmissionService:
         submissions = self.repository.get_by_project_and_group(project_uuid, group_uuid)
         return [SubmissionResponseDto.model_validate(sub.model_dump()) for sub in submissions]
 
-    def get_submissions_by_project_step(self, project_uuid: UUID, project_step: str) -> List[SubmissionResponseDto]:
+    def get_submissions_by_project_step(self, project_uuid: UUID, project_step_uuid: UUID) -> List[SubmissionResponseDto]:
         """Get all submissions for a specific project step"""
-        submissions = self.repository.get_by_project_step(project_uuid, project_step)
+        submissions = self.repository.get_by_project_step(project_uuid, project_step_uuid)
         return [SubmissionResponseDto.model_validate(sub.model_dump()) for sub in submissions]
 
     def update_submission(self, submission_id: UUID, update_data: SubmissionUpdateDto) -> CreateSubmissionResponseDto:
@@ -197,8 +197,8 @@ class SubmissionService:
             status_counts[status] = status_counts.get(status, 0) + 1
 
             # Count by step
-            step = submission.project_step
-            step_counts[step] = step_counts.get(step, 0) + 1
+            step = submission.project_step_uuid
+            step_counts[str(step)] = step_counts.get(str(step), 0) + 1
 
             # Count by link type
             link_type = submission.link_type or "unknown"
@@ -218,10 +218,8 @@ class SubmissionService:
         # Validate link format based on type
         link = submission_data.link.lower()
 
-        if link.startswith("s3://"):
-            # Basic S3 path validation
-            if len(link.split("/")) < 4:  # s3://bucket/path
-                raise ValidationException("S3 link must include bucket and path")
+        if ".s3." not in link or "amazonaws.com" not in link:
+            raise ValidationException("S3 link must include bucket and path")
 
         elif "github.com" in link:
             # GitHub repository validation
