@@ -11,7 +11,7 @@ Content-Type: application/json
   "group_uuid": "987fcdeb-51a2-43d1-9f12-345678901234",
   "project_step_uuid": "111e1111-1111-1111-1111-111111111111",
   "description": "Initial submission for step 1",
-  "submitted_by": "John Doe",
+  "submitted_by_uuid": "aaa1a111-1111-1111-1111-111111111111",
   "file_size_bytes": 1024000,
   "file_count": 15
 }
@@ -28,7 +28,7 @@ Content-Type: application/json
   "group_uuid": "987fcdeb-51a2-43d1-9f12-345678901234",
   "project_step_uuid": "222e2222-2222-2222-2222-222222222222",
   "description": "GitHub repository submission",
-  "submitted_by": "Jane Smith"
+  "submitted_by_uuid": "bbb2b222-2222-2222-2222-222222222222"
 }
 
 ###
@@ -43,7 +43,7 @@ Content-Type: application/json
   "group_uuid": "987fcdeb-51a2-43d1-9f12-345678901234",
   "project_step_uuid": "333e3333-3333-3333-3333-333333333333",
   "description": "Final project submission",
-  "submitted_by": "Bob Johnson"
+  "submitted_by_uuid": "ccc3c333-3333-3333-3333-333333333333"
 }
 
 ###
@@ -85,6 +85,7 @@ Content-Type: application/json
 {
   "description": "Updated description",
   "status": "completed",
+  "submitted_by_uuid": "ddd4d444-4444-4444-4444-444444444444",
   "file_size_bytes": 2048000
 }
 

@@ -21,7 +21,7 @@ class SubmissionResponseDto(BaseModel):
                 "project_step_uuid": "550e8400-e29b-41d4-a716-446655440003",
                 "link_type": "github",
                 "description": "Final submission for project step 1",
-                "submitted_by": "John Doe",
+                "submitted_by_uuid": "550e8400-e29b-41d4-a716-446655440005",
                 "file_size_bytes": 1024000,
                 "file_count": 25,
                 "upload_date_time": "2024-01-15T10:30:00Z",
@@ -41,7 +41,7 @@ class SubmissionResponseDto(BaseModel):
     project_step_uuid: UUID
     link_type: Optional[LinkType]
     description: Optional[str]
-    submitted_by: Optional[str]
+    submitted_by_uuid: Optional[UUID]
     file_size_bytes: Optional[int]
     file_count: Optional[int]
     upload_date_time: datetime

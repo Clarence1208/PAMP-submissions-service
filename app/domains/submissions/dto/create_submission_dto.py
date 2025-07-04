@@ -22,7 +22,7 @@ class CreateSubmissionDto(BaseModel):
                 "group_uuid": "550e8400-e29b-41d4-a716-446655440001",
                 "project_step_uuid": "550e8400-e29b-41d4-a716-446655440002",
                 "description": "Final submission for project step 1",
-                "submitted_by": "John Doe",
+                "submitted_by_uuid": "550e8400-e29b-41d4-a716-446655440005",
                 "file_size_bytes": 1024000,
                 "file_count": 25,
                 "upload_date_time": "2024-01-15T10:30:00Z",
@@ -49,7 +49,7 @@ class CreateSubmissionDto(BaseModel):
     # Optional fields that will be useful
     link_type: Optional[LinkType] = None
     description: Optional[str] = None
-    submitted_by: Optional[str] = None
+    submitted_by_uuid: Optional[UUID] = None
     file_size_bytes: Optional[int] = None
     file_count: Optional[int] = None
     upload_date_time: Optional[datetime] = None
@@ -79,13 +79,6 @@ class CreateSubmissionDto(BaseModel):
         """Validate description length"""
         if v is not None and len(v) > 1000:
             raise ValueError("Description cannot exceed 1000 characters")
-        return v
-
-    @field_validator("submitted_by")
-    def validate_submitted_by(cls, v):
-        """Validate submitted_by length"""
-        if v is not None and len(v) > 255:
-            raise ValueError("Submitted_by cannot exceed 255 characters")
         return v
 
     @field_validator("file_size_bytes")

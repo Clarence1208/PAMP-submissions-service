@@ -50,7 +50,7 @@ async def create_submission(
     - **project_step_uuid**: UUID of the project step (required)
     - **upload_date_time**: Upload timestamp (optional, defaults to current time)
     - **description**: Optional description of the submission
-    - **submitted_by**: Name or identifier of the submitter
+    - **submitted_by_uuid**: UUID of the submitter (optional)
     - **file_size_bytes**: Size of the submission in bytes
     - **file_count**: Number of files in the submission
     - **rules**: List of validation rules to execute (optional)

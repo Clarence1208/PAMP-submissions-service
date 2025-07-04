@@ -38,7 +38,7 @@ class SubmissionBase(SQLModel):
     description: Optional[str] = Field(
         default=None, max_length=1000, description="Optional description of the submission"
     )
-    submitted_by: Optional[str] = Field(default=None, max_length=255, description="Name or identifier of the submitter")
+    submitted_by_uuid: Optional[UUID] = Field(default=None, description="UUID of the submitter")
     file_size_bytes: Optional[int] = Field(default=None, ge=0, description="Size of the submission in bytes")
     file_count: Optional[int] = Field(default=None, ge=0, description="Number of files in the submission")
 
