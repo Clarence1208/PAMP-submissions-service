@@ -6,25 +6,25 @@ Handles React Flow AST generation and code similarity visualization.
 import logging
 from typing import List, Dict, Any
 
+from app.domains.detection.similarity_detection_service import SimilarityDetectionService
+
 logger = logging.getLogger(__name__)
 
 
 class VisualizationService:
     def __init__(self):
         """Initialize the visualization service."""
-        pass
+        self.similarity_service = SimilarityDetectionService()
 
-    def generate_react_flow_ast(self, shared_blocks_result: Dict[str, Any], 
-                                tokens1: List[Dict[str, Any]], tokens2: List[Dict[str, Any]],
+    def generate_react_flow_ast(self, tokens1: List[Dict[str, Any]], tokens2: List[Dict[str, Any]],
                                 source1: str = "", source2: str = "",
                                 file1_name: str = "", file2_name: str = "",
                                 layout_type: str = "elk") -> Dict[str, Any]:
         """
         Generate optimized React Flow JSON representation with minimal payload.
         Focused on essential data for visualization without excessive styling or layout configs.
-        
+
         Args:
-            shared_blocks_result: Result from detect_shared_code_blocks containing similarity data
             tokens1: First set of tokens
             tokens2: Second set of tokens
             source1: Original source code of first file
@@ -33,6 +33,11 @@ class VisualizationService:
             file2_name: Name of the second file
             layout_type: Layout algorithm to use (elk, dagre, etc.)
         """
+        # First detect shared code blocks to see if we should include these files
+        shared_blocks_result = self.similarity_service.detect_shared_code_blocks(
+            tokens1, tokens2, source1, source2, file1_name, file2_name
+        )
+
         # If no similarities detected, return empty structure
         if shared_blocks_result['total_shared_blocks'] == 0:
             return {
@@ -97,8 +102,8 @@ class VisualizationService:
         nodes = []
         edges = []
 
-        # Extract functions and imports
-        functions = self._extract_functions_with_positions(tokens, source_code)
+        # Extract functions and imports using similarity service
+        functions = self.similarity_service._extract_functions_with_positions(tokens, source_code)
         imports = self._extract_imports(tokens, source_code)
 
         # Create file subflow container - absolutely minimal data
@@ -158,8 +163,9 @@ class VisualizationService:
                     "end_line": func_data.get('end_line', 0),
                     "has_similarity": True,
                     "similarity_score": similar_block['similarity_score'],
-                    "similarity_target": similar_block.get('file2_function' if file_prefix == 'file1' else 'file1_function'),
-                    
+                    "similarity_target": similar_block.get(
+                        'file2_function' if file_prefix == 'file1' else 'file1_function'),
+
                     # CRITICAL: Full source code content for comparison dialog
                     "source_code": {
                         "file1_code": similar_block.get('file1_code_block', ''),
@@ -213,7 +219,7 @@ class VisualizationService:
         return nodes, edges, node_id_counter
 
     def _analyze_function_calls(self, tokens: List[Dict[str, Any]], source_code: str,
-                               functions: Dict, file_prefix: str) -> List[Dict]:
+                                functions: Dict, file_prefix: str) -> List[Dict]:
         """Analyze function calls and create clean call edges - no styling (frontend handles with CSS)."""
         call_edges = []
 
@@ -252,85 +258,6 @@ class VisualizationService:
                             })
 
         return call_edges
-
-    def _extract_functions_with_positions(self, tokens: List[Dict[str, Any]], source_code: str = "") -> Dict[str, Dict]:
-        """
-        Extract function definitions with their positions and metadata.
-        Returns a dictionary with function names as keys and position/metadata as values.
-        """
-        functions = {}
-        source_lines = source_code.split('\n') if source_code else []
-
-        def extract_functions_recursive(tokens_list: List[Dict[str, Any]], depth: int = 0) -> None:
-            for i, token in enumerate(tokens_list):
-                if token.get('type') in ['function_definition', 'method_definition']:
-                    func_name = self._extract_function_name(token, tokens_list)
-                    
-                    if func_name and func_name != 'unknown':
-                        start_line = token.get('start_line', 0)
-                        end_line = token.get('end_line', 0)
-                        
-                        # Extract function body/content
-                        func_code = ""
-                        if source_lines and start_line > 0 and end_line > 0:
-                            func_code = self._extract_code_block(source_lines, start_line, end_line)
-                        
-                        # Create unique key for nested functions
-                        func_key = f"{func_name}_{depth}_{i}" if depth > 0 else func_name
-                        
-                        functions[func_key] = {
-                            'function_name': func_name,
-                            'start_line': start_line,
-                            'end_line': end_line,
-                            'code_block': func_code,
-                            'depth': depth,
-                            'token_index': i
-                        }
-                
-                # Recursively check children
-                if 'children' in token and isinstance(token['children'], list):
-                    extract_functions_recursive(token['children'], depth + 1)
-
-        extract_functions_recursive(tokens)
-        return functions
-
-    def _extract_function_name(self, function_token: Dict[str, Any], all_tokens: List[Dict[str, Any]]) -> str:
-        """
-        Extract function name from a function definition token.
-        Handles various token structures that tree-sitter might produce.
-        """
-        # First try to get the name directly from the token
-        if 'text' in function_token:
-            text = function_token['text'].strip()
-            if text.startswith('def '):
-                # Extract function name from "def function_name("
-                name_part = text[4:].split('(')[0].strip()
-                if name_part and name_part.isidentifier():
-                    return name_part
-        
-        # If direct extraction fails, look for identifier in children
-        if 'children' in function_token and isinstance(function_token['children'], list):
-            for child in function_token['children']:
-                if child.get('type') == 'identifier':
-                    name = child.get('text', '').strip()
-                    if name and name.isidentifier():
-                        return name
-        
-        return 'unknown'
-
-    def _extract_code_block(self, source_lines: List[str], start_line: int, end_line: int) -> str:
-        """Extract code block from source lines between start and end line numbers."""
-        if not source_lines or start_line <= 0 or end_line <= 0 or start_line > len(source_lines):
-            return ""
-        
-        # Adjust for 0-based indexing and ensure we don't go out of bounds
-        start_idx = max(0, start_line - 1)
-        end_idx = min(len(source_lines), end_line)
-        
-        if start_idx >= end_idx:
-            return ""
-        
-        return '\n'.join(source_lines[start_idx:end_idx])
 
     def _extract_imports(self, tokens: List[Dict[str, Any]], source_code: str) -> List[Dict]:
         """Extract import statements and their details."""
@@ -402,6 +329,10 @@ class VisualizationService:
 
     def _find_containing_function(self, line_num: int, source_lines: List[str], function_names: List[str]) -> str:
         """Find which function contains a given line number."""
+        # Check if line number is valid
+        if line_num <= 0 or line_num > len(source_lines):
+            return None
+            
         # Look backwards from the line to find the containing function
         for i in range(line_num - 1, -1, -1):
             line = source_lines[i].strip()
@@ -410,4 +341,17 @@ class VisualizationService:
                 func_part = line[4:].split('(')[0].strip()
                 if func_part in function_names:
                     return func_part
-        return None 
+        return None
+
+    # Delegate methods to SimilarityDetectionService
+    def _extract_functions_with_positions(self, tokens: List[Dict[str, Any]], source_code: str = "") -> Dict[str, Dict]:
+        """Delegate to SimilarityDetectionService for function extraction."""
+        return self.similarity_service._extract_functions_with_positions(tokens, source_code)
+
+    def _extract_function_name(self, function_token: Dict[str, Any], all_tokens: List[Dict[str, Any]]) -> str:
+        """Delegate to SimilarityDetectionService for function name extraction."""
+        return self.similarity_service._extract_function_name(function_token, all_tokens)
+
+    def _extract_code_block(self, source_lines: List[str], start_line: int, end_line: int) -> str:
+        """Delegate to SimilarityDetectionService for code block extraction."""
+        return self.similarity_service._extract_code_block(source_lines, start_line, end_line) 

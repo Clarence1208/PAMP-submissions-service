@@ -3,6 +3,7 @@ from typing import Dict, Any, List
 from fastapi import APIRouter, HTTPException
 from datetime import datetime
 
+from app.domains.detection.visualization import VisualizationService
 from app.domains.tokenization.tokenization_service import TokenizationService
 from app.domains.detection.similarity_detection_service import SimilarityDetectionService
 
@@ -307,7 +308,7 @@ async def get_react_flow_ast_for_files(file1: str, file2: str):
     try:
         # Initialize services
         tokenization_service = TokenizationService()
-        similarity_service = SimilarityDetectionService()
+        visualization_service = VisualizationService()
 
         # Define file paths
         calc_file_path = Path("resources/test/project_calculator") / file1
@@ -329,7 +330,7 @@ async def get_react_flow_ast_for_files(file1: str, file2: str):
         game_tokens = tokenization_service.tokenize(game_content, game_file_path)
 
         # Generate optimized React Flow AST
-        react_flow_data = similarity_service.generate_react_flow_ast(
+        react_flow_data = visualization_service.generate_react_flow_ast(
             calc_tokens, game_tokens, calc_content, game_content, file1, file2, "elk"
         )
 
@@ -357,7 +358,7 @@ async def get_react_flow_ast_for_projects():
     try:
         # Initialize services
         tokenization_service = TokenizationService()
-        similarity_service = SimilarityDetectionService()
+        visualization_service = VisualizationService()
 
         # Define project paths
         calculator_project = Path("resources/test/project_calculator")
@@ -388,7 +389,7 @@ async def get_react_flow_ast_for_projects():
                 game_tokens = tokenization_service.tokenize(game_content, game_file)
 
                 # Generate optimized React Flow AST for this pair
-                react_flow_data = similarity_service.generate_react_flow_ast(
+                react_flow_data = visualization_service.generate_react_flow_ast(
                     calc_tokens, game_tokens, calc_content, game_content,
                     calc_file.name, game_file.name, "elk"  # Always use ELK
                 )
@@ -425,7 +426,7 @@ async def get_combined_react_flow_ast_for_projects(layout: str = "elk"):
     try:
         # Initialize services
         tokenization_service = TokenizationService()
-        similarity_service = SimilarityDetectionService()
+        visualization_service = VisualizationService()
 
         # Define project paths
         calculator_project = Path("resources/test/project_calculator")
@@ -461,7 +462,7 @@ async def get_combined_react_flow_ast_for_projects(layout: str = "elk"):
                 game_tokens = tokenization_service.tokenize(game_content, game_file)
 
                 # Generate React Flow AST for this pair with layout
-                react_flow_data = similarity_service.generate_react_flow_ast(
+                react_flow_data = visualization_service.generate_react_flow_ast(
                     calc_tokens, game_tokens, calc_content, game_content,
                     calc_file.name, game_file.name, layout
                 )
