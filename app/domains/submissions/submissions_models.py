@@ -74,3 +74,6 @@ class Submission(SubmissionBase, table=True):
     # Metadata fields
     ip_address: Optional[str] = Field(default=None, max_length=45, description="IP address of the submitter")
     user_agent: Optional[str] = Field(default=None, max_length=500, description="User agent of the submitter")
+
+    # Rule validation results
+    rule_results: Optional[str] = Field(default=None, description="JSON string containing rule validation results")

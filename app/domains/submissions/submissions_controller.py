@@ -35,11 +35,11 @@ def get_client_info(request: Request) -> tuple[Optional[str], Optional[str]]:
 
 @router.post("", response_model=CreateSubmissionResponseDto, status_code=201)
 async def create_submission(
-    submission_data: CreateSubmissionDto,
-    request: Request,
-    allow_duplicates: bool = Query(False, description="Allow duplicate submissions"),
-    execute_rules: bool = Query(True, description="Execute validation rules specified in the submission"),
-    service: SubmissionService = Depends(get_submission_service),
+        submission_data: CreateSubmissionDto,
+        request: Request,
+        allow_duplicates: bool = Query(False, description="Allow duplicate submissions"),
+        execute_rules: bool = Query(True, description="Execute validation rules specified in the submission"),
+        service: SubmissionService = Depends(get_submission_service),
 ):
     """
     Create a new submission
@@ -54,6 +54,7 @@ async def create_submission(
     - **file_size_bytes**: Size of the submission in bytes
     - **file_count**: Number of files in the submission
     - **rules**: List of validation rules to execute (optional)
+    - **force_rules**: If True, submission is created even if validation rules fail (optional, defaults to False)
     """
     try:
         ip_address, user_agent = get_client_info(request)
@@ -90,9 +91,9 @@ async def get_submission(submission_id: UUID, service: SubmissionService = Depen
 
 @router.get("", response_model=List[SubmissionResponseDto])
 async def list_submissions(
-    skip: int = Query(0, ge=0, description="Number of submissions to skip"),
-    limit: int = Query(100, ge=1, le=1000, description="Maximum number of submissions to return"),
-    service: SubmissionService = Depends(get_submission_service),
+        skip: int = Query(0, ge=0, description="Number of submissions to skip"),
+        limit: int = Query(100, ge=1, le=1000, description="Maximum number of submissions to return"),
+        service: SubmissionService = Depends(get_submission_service),
 ):
     """List all submissions with pagination"""
     try:
@@ -103,7 +104,7 @@ async def list_submissions(
 
 @router.get("/project/{project_uuid}/group/{group_uuid}", response_model=List[SubmissionResponseDto])
 async def get_submissions_by_project_and_group(
-    project_uuid: UUID, group_uuid: UUID, service: SubmissionService = Depends(get_submission_service)
+        project_uuid: UUID, group_uuid: UUID, service: SubmissionService = Depends(get_submission_service)
 ):
     """Get all submissions for a specific project and group"""
     try:
@@ -114,7 +115,7 @@ async def get_submissions_by_project_and_group(
 
 @router.get("/project/{project_uuid}/step/{project_step_uuid}", response_model=List[SubmissionResponseDto])
 async def get_submissions_by_project_step(
-    project_uuid: UUID, project_step_uuid: UUID, service: SubmissionService = Depends(get_submission_service)
+        project_uuid: UUID, project_step_uuid: UUID, service: SubmissionService = Depends(get_submission_service)
 ):
     """Get all submissions for a specific project step"""
     try:
@@ -125,7 +126,7 @@ async def get_submissions_by_project_step(
 
 @router.get("/project/{project_uuid}/group/{group_uuid}/statistics")
 async def get_submission_statistics(
-    project_uuid: UUID, group_uuid: UUID, service: SubmissionService = Depends(get_submission_service)
+        project_uuid: UUID, group_uuid: UUID, service: SubmissionService = Depends(get_submission_service)
 ):
     """Get submission statistics for a project and group"""
     try:
@@ -136,9 +137,9 @@ async def get_submission_statistics(
 
 @router.put("/{submission_id}", response_model=CreateSubmissionResponseDto)
 async def update_submission(
-    submission_id: UUID,
-    update_data: SubmissionUpdateDto,
-    service: SubmissionService = Depends(get_submission_service),
+        submission_id: UUID,
+        update_data: SubmissionUpdateDto,
+        service: SubmissionService = Depends(get_submission_service),
 ):
     """Update a submission"""
     try:

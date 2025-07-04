@@ -17,7 +17,8 @@ class SubmissionRepository:
         self.session = session
 
     def create(
-        self, submission_data: CreateSubmissionDto, ip_address: Optional[str] = None, user_agent: Optional[str] = None
+            self, submission_data: CreateSubmissionDto, ip_address: Optional[str] = None,
+            user_agent: Optional[str] = None, rule_results_json: Optional[str] = None
     ) -> Submission:
         """Create a new submission"""
         try:
@@ -36,6 +37,7 @@ class SubmissionRepository:
 
             # Create submission instance
             submission_dict = submission_data.model_dump(exclude={"upload_date_time", "rules"})
+
             submission_dict.update(
                 {
                     "upload_date_time": upload_time,
@@ -44,6 +46,10 @@ class SubmissionRepository:
                     "user_agent": user_agent,
                 }
             )
+
+            # Handle rule_results if provided
+            if rule_results_json:
+                submission_dict["rule_results"] = rule_results_json
             submission = Submission(**submission_dict)
 
             self.session.add(submission)
@@ -148,7 +154,8 @@ class SubmissionRepository:
         except Exception as e:
             raise DatabaseException(f"Failed to count submissions: {str(e)}")
 
-    def check_duplicate_submission(self, project_uuid: UUID, group_uuid: UUID, project_step_uuid: UUID, link: str) -> bool:
+    def check_duplicate_submission(self, project_uuid: UUID, group_uuid: UUID, project_step_uuid: UUID,
+                                   link: str) -> bool:
         """Check if a duplicate submission exists"""
         try:
             statement = select(Submission).where(

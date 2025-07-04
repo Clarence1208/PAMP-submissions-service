@@ -1,23 +1,6 @@
 # Submissions API Tests
 # Use these HTTP requests to test your submissions endpoints
 
-### Create a new submission with S3 link
-POST http://127.0.0.1:8001/submissions/
-Content-Type: application/json
-
-{
-  "link": "s3://my-bucket/submissions/project1/group1/step1.zip",
-  "project_uuid": "123e4567-e89b-12d3-a456-426614174000",
-  "group_uuid": "987fcdeb-51a2-43d1-9f12-345678901234",
-  "project_step_uuid": "111e1111-1111-1111-1111-111111111111",
-  "description": "Initial submission for step 1",
-  "submitted_by_uuid": "aaa1a111-1111-1111-1111-111111111111",
-  "file_size_bytes": 1024000,
-  "file_count": 15
-}
-
-###
-
 ### Create a new submission with GitHub link
 POST http://127.0.0.1:8001/submissions/
 Content-Type: application/json
@@ -30,8 +13,6 @@ Content-Type: application/json
   "description": "GitHub repository submission",
   "submitted_by_uuid": "bbb2b222-2222-2222-2222-222222222222"
 }
-
-###
 
 ### Create a new submission with GitLab link
 POST http://127.0.0.1:8001/submissions/
