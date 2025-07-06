@@ -29,7 +29,6 @@ class SubmissionService:
         ip_address: Optional[str] = None,
         user_agent: Optional[str] = None,
         allow_duplicates: bool = False,
-        execute_rules: bool = True,
     ) -> CreateSubmissionResponseDto:
         """Create a new submission with business logic validation"""
 
@@ -50,7 +49,7 @@ class SubmissionService:
 
         # Execute validation rules if specified and requested
         rule_results = []
-        if execute_rules and submission_data.rules:
+        if submission_data.rules:
             try:
                 logger.info(f"Executing {len(submission_data.rules)} validation rules")
                 rule_results = self.rule_service.validate_submission(submission_data)
