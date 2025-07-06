@@ -3,8 +3,10 @@ import tempfile
 from pathlib import Path
 
 from app.domains.repositories.exceptions import (
-    RepositoryFetchException, UnsupportedRepositoryException,
-    SubmissionValidationException, TemporaryDirectoryException
+    RepositoryFetchException,
+    SubmissionValidationException,
+    TemporaryDirectoryException,
+    UnsupportedRepositoryException,
 )
 from app.domains.repositories.fetchers.github_fetcher import GithubFetcher
 from app.domains.repositories.fetchers.gitlab_fetcher import GitlabFetcher
@@ -28,6 +30,7 @@ def cleanup_temp_directory(repo_path: Path) -> None:
         if repo_path and repo_path.exists():
             logger.debug(f"Cleaning up temporary directory: {repo_path}")
             import shutil
+
             shutil.rmtree(repo_path, ignore_errors=True)
             logger.info(f"Successfully cleaned up temporary directory: {repo_path}")
     except Exception as e:
@@ -49,14 +52,14 @@ class SubmissionFetcher:
     def fetch_submission(self, submission: CreateSubmissionDto) -> Path | None:
         """
         Fetch a submission from any supported source
-        
+
         Args:
             submission: Submission object containing the project URL and metadata
             temp_dir: Optional temporary directory path. If not provided, creates one.
-            
+
         Returns:
             Path to the fetched submission
-            
+
         Raises:
             RepositoryFetchException: If URL is not supported or fetching fails
             SubmissionValidationException: If submission validation fails
@@ -67,14 +70,13 @@ class SubmissionFetcher:
             if not submission or not submission.link:
                 raise SubmissionValidationException(
                     "Submission must have a valid link",
-                    submission_id=str(submission.project_uuid) if submission else None
+                    submission_id=str(submission.project_uuid) if submission else None,
                 )
 
             project_url = submission.link.strip()
             if not project_url:
                 raise SubmissionValidationException(
-                    "Submission link cannot be empty",
-                    submission_id=str(submission.project_uuid)
+                    "Submission link cannot be empty", submission_id=str(submission.project_uuid)
                 )
 
             # Create temporary directory
@@ -98,7 +100,8 @@ class SubmissionFetcher:
                 raise UnsupportedRepositoryException(project_url, self.get_supported_types())
 
             logger.info(
-                f"Fetching {project_type} submission: {project_url} (Project: {submission.project_uuid}, Group: {submission.group_uuid})")
+                f"Fetching {project_type} submission: {project_url} (Project: {submission.project_uuid}, Group: {submission.group_uuid})"
+            )
 
             # Fetch from appropriate source
             try:
@@ -114,16 +117,15 @@ class SubmissionFetcher:
                 # Validate the result
                 if not result_path or not result_path.exists():
                     raise RepositoryFetchException(
-                        f"Fetch completed but no content found at: {result_path}",
-                        project_type,
-                        project_url
+                        f"Fetch completed but no content found at: {result_path}", project_type, project_url
                     )
 
                 # Log successful fetch with statistics
                 try:
                     file_count = len(list(result_path.rglob("*")))
                     logger.info(
-                        f"Successfully fetched {project_type} submission: {project_url} -> {result_path} ({file_count} items)")
+                        f"Successfully fetched {project_type} submission: {project_url} -> {result_path} ({file_count} items)"
+                    )
                 except Exception:
                     logger.info(f"Successfully fetched {project_type} submission: {project_url} -> {result_path}")
 
@@ -135,9 +137,7 @@ class SubmissionFetcher:
             except Exception as e:
                 logger.error(f"Unexpected error during {project_type} fetch: {str(e)}")
                 raise RepositoryFetchException(
-                    f"Unexpected error during {project_type} fetch: {str(e)}",
-                    project_type,
-                    project_url
+                    f"Unexpected error during {project_type} fetch: {str(e)}", project_type, project_url
                 )
 
         except (RepositoryFetchException, SubmissionValidationException, TemporaryDirectoryException):
@@ -145,10 +145,11 @@ class SubmissionFetcher:
             raise
         except Exception as e:
             logger.error(
-                f"Unexpected error fetching submission {submission.project_uuid}/{submission.group_uuid}: {str(e)}")
+                f"Unexpected error fetching submission {submission.project_uuid}/{submission.group_uuid}: {str(e)}"
+            )
             raise RepositoryFetchException(
                 f"Unexpected error fetching submission: {str(e)}",
-                source_url=project_url if 'project_url' in locals() else submission.link if submission else None
+                source_url=project_url if "project_url" in locals() else submission.link if submission else None,
             )
 
     def _create_temp_directory(self, project_url: str) -> str:
@@ -162,20 +163,20 @@ class SubmissionFetcher:
     def _determine_project_type(self, project_url: str) -> str:
         """
         Determine the type of project based on the URL
-        
+
         Args:
             project_url: URL of the project
-            
+
         Returns:
             Project type ("github", "gitlab", or "s3")
-            
+
         Raises:
             UnsupportedRepositoryException: If URL type cannot be determined
         """
         if not project_url or not project_url.strip():
             raise UnsupportedRepositoryException(
                 "Empty project URL",
-                ["https://github.com/user/repo", "https://gitlab.com/user/repo", "s3://bucket/path"]
+                ["https://github.com/user/repo", "https://gitlab.com/user/repo", "s3://bucket/path"],
             )
 
         url_lower = project_url.lower().strip()
@@ -189,25 +190,23 @@ class SubmissionFetcher:
                 return "gitlab"
             else:
                 raise UnsupportedRepositoryException(
-                    project_url,
-                    ["https://github.com/user/repo", "https://gitlab.com/user/repo", "s3://bucket/path"]
+                    project_url, ["https://github.com/user/repo", "https://gitlab.com/user/repo", "s3://bucket/path"]
                 )
         except UnsupportedRepositoryException:
             raise
         except Exception as e:
             logger.error(f"Error determining project type for {project_url}: {str(e)}")
             raise UnsupportedRepositoryException(
-                project_url,
-                ["https://github.com/user/repo", "https://gitlab.com/user/repo", "s3://bucket/path"]
+                project_url, ["https://github.com/user/repo", "https://gitlab.com/user/repo", "s3://bucket/path"]
             )
 
     def is_supported_submission(self, submission: CreateSubmissionDto) -> bool:
         """
         Check if the submission URL is supported
-        
+
         Args:
             submission: Submission to check
-            
+
         Returns:
             True if supported, False otherwise
         """
@@ -225,10 +224,8 @@ class SubmissionFetcher:
     def get_supported_types(self) -> list[str]:
         """
         Get list of supported project types
-        
+
         Returns:
             List of supported project types
         """
         return ["github", "gitlab", "s3"]
-
-

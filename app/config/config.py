@@ -1,7 +1,7 @@
-from functools import lru_cache
 import os
+from functools import lru_cache
 
-from pydantic import SecretStr, Field
+from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings
 
 
@@ -29,15 +29,15 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         case_sensitive = False
-        
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         if not self.aws_access_key_id:
-            self.aws_access_key_id = os.environ.get('AWS_ACCESS_KEY_ID')
+            self.aws_access_key_id = os.environ.get("AWS_ACCESS_KEY_ID")
         if not self.aws_secret_access_key:
-            self.aws_secret_access_key = os.environ.get('AWS_SECRET_ACCESS_KEY')
+            self.aws_secret_access_key = os.environ.get("AWS_SECRET_ACCESS_KEY")
         if not self.aws_default_region or self.aws_default_region == "us-east-1":
-            self.aws_default_region = os.environ.get('AWS_DEFAULT_REGION', 'us-east-1')
+            self.aws_default_region = os.environ.get("AWS_DEFAULT_REGION", "us-east-1")
 
 
 @lru_cache()

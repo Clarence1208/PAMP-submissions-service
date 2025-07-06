@@ -2,9 +2,7 @@ import logging
 import subprocess
 from pathlib import Path
 
-from app.domains.repositories.exceptions import (
-    GitCloneException, GitTimeoutException, UnsupportedRepositoryException
-)
+from app.domains.repositories.exceptions import GitCloneException, GitTimeoutException, UnsupportedRepositoryException
 
 logger = logging.getLogger(__name__)
 
@@ -36,8 +34,9 @@ def _normalize_gitlab_url(repo_url: str) -> str:
         UnsupportedRepositoryException: If URL format is not supported
     """
     if not repo_url or not repo_url.strip():
-        raise UnsupportedRepositoryException("Empty repository URL",
-                                             ["https://gitlab.com/user/repo", "git@gitlab.com:user/repo"])
+        raise UnsupportedRepositoryException(
+            "Empty repository URL", ["https://gitlab.com/user/repo", "git@gitlab.com:user/repo"]
+        )
 
     url = repo_url.strip()
 
@@ -81,24 +80,21 @@ def _normalize_gitlab_url(repo_url: str) -> str:
             return f"https://{host}/{repo_path}.git"
         else:
             # Unsupported format
-            raise UnsupportedRepositoryException(repo_url, [
-                "https://gitlab.com/user/repo",
-                "git@gitlab.com:user/repo",
-                "https://gitlab.example.com/user/repo"
-            ])
+            raise UnsupportedRepositoryException(
+                repo_url,
+                ["https://gitlab.com/user/repo", "git@gitlab.com:user/repo", "https://gitlab.example.com/user/repo"],
+            )
     except UnsupportedRepositoryException:
         raise
     except Exception as e:
         logger.error(f"Error normalizing GitLab URL {repo_url}: {str(e)}")
-        raise UnsupportedRepositoryException(repo_url, [
-            "https://gitlab.com/user/repo",
-            "git@gitlab.com:user/repo",
-            "https://gitlab.example.com/user/repo"
-        ])
+        raise UnsupportedRepositoryException(
+            repo_url,
+            ["https://gitlab.com/user/repo", "git@gitlab.com:user/repo", "https://gitlab.example.com/user/repo"],
+        )
 
 
 class GitlabFetcher:
-
     def clone_gitlab_repo(self, repo_url: str, temp_dir: str) -> Path:
         """
         Clone a GitLab repository to the temporary directory
@@ -134,6 +130,7 @@ class GitlabFetcher:
             if repo_path.exists():
                 logger.warning(f"Destination path already exists, removing: {repo_path}")
                 import shutil
+
                 try:
                     shutil.rmtree(repo_path)
                 except OSError as e:
@@ -146,13 +143,7 @@ class GitlabFetcher:
 
             # Execute git clone with timeout
             try:
-                result = subprocess.run(
-                    cmd,
-                    capture_output=True,
-                    text=True,
-                    timeout=300,  # 5 minutes
-                    cwd=temp_dir
-                )
+                result = subprocess.run(cmd, capture_output=True, text=True, timeout=300, cwd=temp_dir)  # 5 minutes
             except subprocess.TimeoutExpired as e:
                 logger.error(f"GitLab clone timed out after 300 seconds: {repo_url}")
                 raise GitTimeoutException(repo_url, "gitlab", 300)
@@ -164,14 +155,17 @@ class GitlabFetcher:
 
                 # Analyze error for more specific messages
                 if "not found" in error_output.lower() or "repository not found" in error_output.lower():
-                    raise GitCloneException(repo_url, "gitlab", "Repository not found or access denied",
-                                            result.returncode)
+                    raise GitCloneException(
+                        repo_url, "gitlab", "Repository not found or access denied", result.returncode
+                    )
                 elif "authentication" in error_output.lower() or "permission denied" in error_output.lower():
-                    raise GitCloneException(repo_url, "gitlab", "Authentication failed or access denied",
-                                            result.returncode)
+                    raise GitCloneException(
+                        repo_url, "gitlab", "Authentication failed or access denied", result.returncode
+                    )
                 elif "network" in error_output.lower() or "could not resolve" in error_output.lower():
-                    raise GitCloneException(repo_url, "gitlab", "Network error or DNS resolution failed",
-                                            result.returncode)
+                    raise GitCloneException(
+                        repo_url, "gitlab", "Network error or DNS resolution failed", result.returncode
+                    )
                 else:
                     raise GitCloneException(repo_url, "gitlab", error_output, result.returncode)
 
