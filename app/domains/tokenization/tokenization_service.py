@@ -165,20 +165,18 @@ class TokenizationService:
             
             logger.info(f"Starting tokenization for project: {project_url}")
             
-            # Fetch submission with comprehensive error handling
+            # Fetch submission with simplified error handling
             try:
                 repo_path = self.submission_fetcher.fetch_submission(temp_submission)
                 logger.info(f"Successfully fetched project for tokenization: {repo_path}")
-            except UnsupportedRepositoryException as e:
-                logger.error(f"Unsupported repository type for tokenization: {str(e)}")
-                raise  # Re-raise to let caller handle
-            except RepositoryFetchException as e:
-                logger.error(f"Repository fetch failed for tokenization: {str(e)}")
-                raise  # Re-raise to let caller handle
+            except (UnsupportedRepositoryException, RepositoryFetchException):
+                # Re-raise repository-specific exceptions
+                raise
             except SubmissionValidationException as e:
-                logger.error(f"Submission validation failed for tokenization: {str(e)}")
+                # Convert to ValidationException for consistency
                 raise ValidationException(f"Submission validation failed: {str(e)}")
             except Exception as e:
+                # Handle any other unexpected errors
                 logger.error(f"Unexpected error during project fetch for tokenization: {str(e)}")
                 raise RepositoryFetchException(f"Unexpected error during project fetch: {str(e)}")
             

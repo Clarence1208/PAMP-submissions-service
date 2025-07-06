@@ -44,6 +44,9 @@ def _normalize_github_url(repo_url: str) -> str:
             repo_path = url.replace("git@github.com:", "").rstrip("/")
             if not repo_path or "/" not in repo_path:
                 raise UnsupportedRepositoryException(repo_url, ["git@github.com:user/repo"])
+            # Remove .git suffix if present to avoid duplication
+            if repo_path.endswith(".git"):
+                repo_path = repo_path[:-4]
             return f"https://github.com/{repo_path}.git"
         elif "/" in url and not url.startswith("http"):
             # Assume it's a "user/repo" format

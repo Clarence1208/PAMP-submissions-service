@@ -82,20 +82,18 @@ class RuleService:
             )
 
         try:
-            # Fetch submission with comprehensive error handling
+            # Fetch submission with simplified error handling
             try:
                 repo_path = self.submission_fetcher.fetch_submission(submission_data)
                 logger.info(f"Successfully fetched submission for validation: {repo_path}")
-            except UnsupportedRepositoryException as e:
-                logger.error(f"Unsupported repository type: {str(e)}")
-                raise  # Re-raise to let caller handle
-            except RepositoryFetchException as e:
-                logger.error(f"Repository fetch failed: {str(e)}")
-                raise  # Re-raise to let caller handle
+            except (UnsupportedRepositoryException, RepositoryFetchException):
+                # Re-raise repository-specific exceptions
+                raise
             except SubmissionValidationException as e:
-                logger.error(f"Submission validation failed: {str(e)}")
+                # Convert to ValidationException for consistency
                 raise ValidationException(f"Submission validation failed: {str(e)}")
             except Exception as e:
+                # Handle any other unexpected errors
                 logger.error(f"Unexpected error during submission fetch: {str(e)}")
                 raise RepositoryFetchException(f"Unexpected error during submission fetch: {str(e)}")
 
