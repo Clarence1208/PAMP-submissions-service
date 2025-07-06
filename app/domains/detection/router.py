@@ -1,24 +1,29 @@
-from pathlib import Path
-from typing import Dict, Any, List
-from fastapi import APIRouter, HTTPException
 from datetime import datetime
+from pathlib import Path
+from typing import Dict, Any
 
+from fastapi import APIRouter, HTTPException, Depends
+
+from app.domains.detection.similarity_detection_service import SimilarityDetectionService
 from app.domains.detection.visualization import VisualizationService
 from app.domains.tokenization.tokenization_service import TokenizationService
-from app.domains.detection.similarity_detection_service import SimilarityDetectionService
 
 router = APIRouter(prefix="/detection", tags=["detection"])
 
 
+def get_tokenization_service() -> TokenizationService:
+    """Dependency to get tokenization service"""
+    return TokenizationService()
+
+
 @router.get("/similarity-test", response_model=Dict[str, Any])
-async def test_project_similarity():
+async def test_project_similarity(tokenization_service: TokenizationService = Depends(get_tokenization_service)):
     """
     Test endpoint that exposes similarity results for the test projects.
     Compares the calculator and game projects and returns detailed similarity analysis.
     """
     try:
         # Initialize services
-        tokenization_service = TokenizationService()
         similarity_service = SimilarityDetectionService()
 
         # Define project paths
@@ -159,13 +164,12 @@ async def test_project_similarity():
 
 
 @router.get("/similarity-test/simple", response_model=Dict[str, Any])
-async def test_project_similarity_simple():
+async def test_project_similarity_simple(tokenization_service: TokenizationService = Depends(get_tokenization_service)):
     """
     Simplified test endpoint that returns basic similarity metrics for the test projects.
     """
     try:
         # Initialize services
-        tokenization_service = TokenizationService()
         similarity_service = SimilarityDetectionService()
 
         # Define project paths

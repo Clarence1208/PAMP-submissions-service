@@ -1,4 +1,3 @@
-import os
 from functools import lru_cache
 
 from pydantic_settings import BaseSettings
@@ -19,6 +18,10 @@ class Settings(BaseSettings):
     postgres_db: str = "submissions_db"
     postgres_host: str = "localhost"
     postgres_port: int = 5432
+
+    # AWS settings for S3 fetcher
+    aws_access_key_id: str | None = None
+    aws_secret_access_key: str | None = None
 
     class Config:
         env_file = ".env"
