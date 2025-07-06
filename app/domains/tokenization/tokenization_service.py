@@ -2,20 +2,22 @@ import logging
 import shutil
 import tempfile
 from pathlib import Path
-from typing import List, Dict, Any, Optional
+from typing import Any, Dict, List, Optional
 from uuid import uuid4
 
 import tree_sitter_python as tspython
-from tree_sitter import Parser, Language
+from tree_sitter import Language, Parser
 
 from app.domains.detection.similarity_detection_service import SimilarityDetectionService
+from app.domains.repositories.exceptions import (
+    RepositoryFetchException,
+    SubmissionValidationException,
+    TemporaryDirectoryException,
+    UnsupportedRepositoryException,
+)
 from app.domains.repositories.submission_fetcher import SubmissionFetcher, cleanup_temp_directory
 from app.domains.submissions.dto.create_submission_dto import CreateSubmissionDto
 from app.shared.exceptions import ValidationException
-from app.domains.repositories.exceptions import (
-    RepositoryFetchException, UnsupportedRepositoryException,
-    SubmissionValidationException, TemporaryDirectoryException
-)
 
 logger = logging.getLogger(__name__)
 
@@ -35,8 +37,8 @@ class TokenizationService:
             python_language = Language(tspython.language())
             py_parser = Parser()
             py_parser.language = python_language
-            self.parsers['python'] = py_parser
-            self.parsers['.py'] = py_parser
+            self.parsers["python"] = py_parser
+            self.parsers[".py"] = py_parser
 
             logger.info("Tree-sitter parsers initialized successfully")
         except Exception as e:
@@ -51,7 +53,7 @@ class TokenizationService:
                 return suffix
 
         # Only Python for now
-        return '.py'
+        return ".py"
 
     def tokenize(self, text: str, file_path: Optional[Path] = None) -> List[Dict[str, Any]]:
         """
@@ -72,7 +74,7 @@ class TokenizationService:
 
             # Extract tokens
             tokens = []
-            self._extract_tokens(root_node, text.encode('utf8'), tokens)
+            self._extract_tokens(root_node, text.encode("utf8"), tokens)
 
             return tokens
 
@@ -84,13 +86,13 @@ class TokenizationService:
         """Recursively extract tokens from the syntax tree"""
         # Add current node as token if it has meaningful content and is named
         if node.start_byte < node.end_byte and node.is_named:
-            token_text = source_code[node.start_byte:node.end_byte].decode('utf8')
+            token_text = source_code[node.start_byte : node.end_byte].decode("utf8")
 
             token = {
-                'type': node.type,
-                'text': token_text,
-                'start': node.start_point[0],  # Just row number
-                'end': node.end_point[0]  # Just row number
+                "type": node.type,
+                "text": token_text,
+                "start": node.start_point[0],  # Just row number
+                "end": node.end_point[0],  # Just row number
             }
             tokens.append(token)
 
@@ -107,7 +109,7 @@ class TokenizationService:
 
         try:
             # concatenate token texts with spaces
-            return ' '.join(token.get('text', '') for token in tokens if token.get('text'))
+            return " ".join(token.get("text", "") for token in tokens if token.get("text"))
 
         except Exception as e:
             logger.error(f"Detokenization failed: {e}")
@@ -124,7 +126,7 @@ class TokenizationService:
         for file_path in project_path.rglob("*"):
             if file_path.is_file():
                 try:
-                    with open(file_path, 'r', encoding='utf-8') as f:
+                    with open(file_path, "r", encoding="utf-8") as f:
                         content = f.read()
                     tokens = self.tokenize(content, file_path)
                     logger.debug(f"Tokenized {file_path}: {len(tokens)} tokens")
@@ -141,10 +143,10 @@ class TokenizationService:
     def tokenize_project_from_url(self, project_url: str) -> None:
         """
         Fetch and tokenize a project from a URL (GitHub, GitLab, or S3)
-        
+
         Args:
             project_url: URL of the project to tokenize
-            
+
         Raises:
             RepositoryFetchException: If URL is not supported or fetching fails
             UnsupportedRepositoryException: If URL format is not supported
@@ -152,18 +154,18 @@ class TokenizationService:
         """
         if not project_url or not project_url.strip():
             raise ValidationException("Project URL cannot be empty")
-        
+
         try:
             # Create a temporary submission object for fetching
             temp_submission = CreateSubmissionDto(
                 link=project_url.strip(),
                 project_uuid=uuid4(),  # Temporary UUID for tokenization
-                group_uuid=uuid4(),    # Temporary UUID for tokenization
-                project_step="tokenization"
+                group_uuid=uuid4(),  # Temporary UUID for tokenization
+                project_step="tokenization",
             )
-            
+
             logger.info(f"Starting tokenization for project: {project_url}")
-            
+
             # Fetch submission with simplified error handling
             try:
                 repo_path = self.submission_fetcher.fetch_submission(temp_submission)
@@ -178,11 +180,11 @@ class TokenizationService:
                 # Handle any other unexpected errors
                 logger.error(f"Unexpected error during project fetch for tokenization: {str(e)}")
                 raise RepositoryFetchException(f"Unexpected error during project fetch: {str(e)}")
-            
+
             # Verify the fetched project
             if not repo_path.exists():
                 raise ValidationException(f"Fetched project path does not exist: {repo_path}")
-            
+
             # Remove .git directory if it exists (for git repositories)
             git_dir = repo_path / ".git"
             if git_dir.exists():
@@ -191,7 +193,7 @@ class TokenizationService:
                     logger.debug(f"Removed .git directory from: {repo_path}")
                 except Exception as e:
                     logger.warning(f"Failed to remove .git directory: {str(e)}")
-            
+
             # Tokenize the project
             try:
                 self.tokenize_project(repo_path)
@@ -199,7 +201,7 @@ class TokenizationService:
             except Exception as e:
                 logger.error(f"Failed to tokenize project {project_url}: {str(e)}")
                 raise ValidationException(f"Tokenization failed: {str(e)}")
-            
+
         finally:
-            if 'repo_path' in locals() and repo_path and repo_path.exists():
+            if "repo_path" in locals() and repo_path and repo_path.exists():
                 cleanup_temp_directory(repo_path)

@@ -3,8 +3,9 @@ from pathlib import Path
 from typing import List
 
 from app.domains.repositories.exceptions import (
-    RepositoryFetchException, UnsupportedRepositoryException,
-    SubmissionValidationException
+    RepositoryFetchException,
+    SubmissionValidationException,
+    UnsupportedRepositoryException,
 )
 from app.domains.repositories.submission_fetcher import SubmissionFetcher, cleanup_temp_directory
 from app.domains.submissions.dto.create_submission_dto import CreateSubmissionDto
@@ -75,8 +76,7 @@ class RuleService:
         if not self.submission_fetcher.is_supported_submission(submission_data):
             supported_types = ", ".join(self.submission_fetcher.get_supported_types())
             raise UnsupportedRepositoryException(
-                submission_data.link if submission_data and submission_data.link else "unknown",
-                supported_types
+                submission_data.link if submission_data and submission_data.link else "unknown", supported_types
             )
 
         try:
@@ -122,7 +122,7 @@ class RuleService:
             return results
 
         finally:
-            if 'repo_path' in locals() and repo_path and repo_path.exists():
+            if "repo_path" in locals() and repo_path and repo_path.exists():
                 cleanup_temp_directory(repo_path)
 
     def _execute_rule(self, rule_dto: RuleDto, repo_path: Path) -> RuleExecutionResult:
