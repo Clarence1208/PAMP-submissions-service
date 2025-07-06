@@ -38,7 +38,6 @@ async def create_submission(
     submission_data: CreateSubmissionDto,
     request: Request,
     allow_duplicates: bool = Query(False, description="Allow duplicate submissions"),
-    execute_rules: bool = Query(True, description="Execute validation rules specified in the submission"),
     service: SubmissionService = Depends(get_submission_service),
 ):
     """
@@ -64,7 +63,6 @@ async def create_submission(
             ip_address=ip_address,
             user_agent=user_agent,
             allow_duplicates=allow_duplicates,
-            execute_rules=execute_rules,
         )
     except ValidationException as e:
         # Return structured error details if available

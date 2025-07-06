@@ -482,7 +482,7 @@ curl http://localhost:8001/submissions/rules/documentation
 
 **Disable Rule Execution:**
 ```bash
-curl -X POST "http://localhost:8001/submissions?execute_rules=false" \
+curl -X POST "http://localhost:8001/submissions" \
   -H "Content-Type: application/json" \
   -d '{"link": "...", "rules": [...]}'
 ```

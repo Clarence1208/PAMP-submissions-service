@@ -3,7 +3,7 @@ version: '3.8'
 services:
   web:
     build: .
-    command: uvicorn app.main:app --host 0.0.0.0 --port 3002 --reload
+    command: uvicorn app.main:app --host 0.0.0.0 --port 3002 --reload --log-level debug
     volumes:
       - .:/app
     ports:
@@ -11,6 +11,9 @@ services:
     environment:
       - DATABASE_URL=postgresql://postgres:password@db:5432/submissions_db
       - DEBUG=true
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION:-us-east-1}
     depends_on:
       - db
     restart: unless-stopped

@@ -50,7 +50,7 @@ class SubmissionBase(SQLModel):
 
         # Basic validation for different link types
         v_lower = v.lower()
-        if ".s3." in v_lower or "amazonaws.com" in v_lower:
+        if not v_lower.startswith("s3://"):
             return v
         elif "github.com" in v_lower or "gitlab.com" in v_lower:
             if not v_lower.startswith("https://"):
