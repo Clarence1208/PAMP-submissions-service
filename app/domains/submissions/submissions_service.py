@@ -10,6 +10,7 @@ from app.domains.submissions.dto.create_submission_response_dto import CreateSub
 from app.domains.submissions.dto.submission_response_dto import SubmissionResponseDto
 from app.domains.submissions.dto.submission_update_dto import SubmissionUpdateDto
 from app.domains.submissions.rules.rule_service import RuleService
+from app.domains.submissions.submissions_models import LinkType
 from app.domains.submissions.submissions_repository import SubmissionRepository
 from app.shared.exceptions import NotFoundException, ValidationException
 
@@ -46,6 +47,16 @@ class SubmissionService:
 
         # Validate business rules
         self._validate_submission_data(submission_data)
+
+        if not submission_data.link_type:
+            # Determine link type based on the link
+            link_lower = submission_data.link.lower()
+            if link_lower.startswith("s3://"):
+                submission_data.link_type = LinkType.S3
+            elif "github.com" in link_lower:
+                submission_data.link_type = LinkType.GITHUB
+            elif "gitlab.com" in link_lower:
+                submission_data.link_type = LinkType.GITLAB
 
         # Execute validation rules if specified and requested
         rule_results = []
