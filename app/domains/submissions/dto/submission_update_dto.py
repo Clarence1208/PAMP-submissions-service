@@ -1,14 +1,15 @@
 from datetime import datetime
 from typing import Optional
 from uuid import UUID
-import pytz
 
+import pytz
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.domains.submissions.submissions_models import SubmissionStatus
 
 # Paris timezone
-PARIS_TZ = pytz.timezone('Europe/Paris')
+PARIS_TZ = pytz.timezone("Europe/Paris")
+
 
 def get_paris_time() -> datetime:
     """Get current time in Paris timezone"""

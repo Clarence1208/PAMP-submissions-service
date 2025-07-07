@@ -1,8 +1,8 @@
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict
-import pytz
 
+import pytz
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.domains.detection.similarity_detection_service import SimilarityDetectionService
@@ -10,11 +10,13 @@ from app.domains.detection.visualization import VisualizationService
 from app.domains.tokenization.tokenization_service import TokenizationService
 
 # Paris timezone
-PARIS_TZ = pytz.timezone('Europe/Paris')
+PARIS_TZ = pytz.timezone("Europe/Paris")
+
 
 def get_paris_time() -> datetime:
     """Get current time in Paris timezone"""
     return datetime.now(PARIS_TZ)
+
 
 router = APIRouter(prefix="/detection", tags=["detection"])
 
