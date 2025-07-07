@@ -1,8 +1,8 @@
 from datetime import datetime, timezone
 from typing import List, Optional
 from uuid import UUID
-import pytz
 
+import pytz
 from sqlmodel import Session, select
 
 from app.domains.submissions.dto.create_submission_dto import CreateSubmissionDto
@@ -11,7 +11,8 @@ from app.domains.submissions.submissions_models import LinkType, Submission
 from app.shared.exceptions import DatabaseException, NotFoundException
 
 # Paris timezone
-PARIS_TZ = pytz.timezone('Europe/Paris')
+PARIS_TZ = pytz.timezone("Europe/Paris")
+
 
 def get_paris_time() -> datetime:
     """Get current time in Paris timezone"""
@@ -167,9 +168,7 @@ class SubmissionRepository:
         except Exception as e:
             raise DatabaseException(f"Failed to count submissions: {str(e)}")
 
-    def check_duplicate_submission(
-        self, project_uuid: UUID, group_uuid: UUID, project_step_uuid: UUID
-    ) -> bool:
+    def check_duplicate_submission(self, project_uuid: UUID, group_uuid: UUID, project_step_uuid: UUID) -> bool:
         """Check if a duplicate submission exists"""
         try:
             statement = select(Submission).where(

@@ -1,8 +1,8 @@
 import time
 from datetime import datetime
-import pytz
 
 import psutil
+import pytz
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, text
 
@@ -11,11 +11,13 @@ from app.domains.health.models import DatabaseHealth, HealthCheck, ServiceHealth
 from app.shared.database import get_session
 
 # Paris timezone
-PARIS_TZ = pytz.timezone('Europe/Paris')
+PARIS_TZ = pytz.timezone("Europe/Paris")
+
 
 def get_paris_time() -> datetime:
     """Get current time in Paris timezone"""
     return datetime.now(PARIS_TZ)
+
 
 router = APIRouter(prefix="/health", tags=["health"])
 settings = get_settings()

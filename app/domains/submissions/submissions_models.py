@@ -2,13 +2,14 @@ from datetime import datetime
 from enum import Enum
 from typing import Optional
 from uuid import UUID, uuid4
-import pytz
 
+import pytz
 from pydantic import field_validator
 from sqlmodel import Field, SQLModel
 
 # Paris timezone
-PARIS_TZ = pytz.timezone('Europe/Paris')
+PARIS_TZ = pytz.timezone("Europe/Paris")
+
 
 def get_paris_time() -> datetime:
     """Get current time in Paris timezone"""
