@@ -1,13 +1,21 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional
 from uuid import UUID
+import pytz
 
 from sqlmodel import Session, select
 
 from app.domains.submissions.dto.create_submission_dto import CreateSubmissionDto
 from app.domains.submissions.dto.submission_update_dto import SubmissionUpdateDto
-from app.domains.submissions.submissions_models import Submission
+from app.domains.submissions.submissions_models import LinkType, Submission
 from app.shared.exceptions import DatabaseException, NotFoundException
+
+# Paris timezone
+PARIS_TZ = pytz.timezone('Europe/Paris')
+
+def get_paris_time() -> datetime:
+    """Get current time in Paris timezone"""
+    return datetime.now(PARIS_TZ)
 
 
 class SubmissionRepository:
@@ -25,18 +33,20 @@ class SubmissionRepository:
     ) -> Submission:
         """Create a new submission"""
         try:
-            # Set upload_date_time to current time if not provided
-            upload_time = submission_data.upload_date_time or datetime.now()
+            # Set upload_date_time to current time in Paris timezone if not provided
+            upload_time = submission_data.upload_date_time or get_paris_time()
 
-            # Determine link type based on the link
-            link_type = None
-            link_lower = submission_data.link.lower()
-            if ".s3." in link_lower or "amazonaws.com" in link_lower:
-                link_type = "s3"
-            elif "github.com" in link_lower:
-                link_type = "github"
-            elif "gitlab.com" in link_lower:
-                link_type = "gitlab"
+            # Use provided link_type from DTO, or determine it automatically if not provided
+            link_type = submission_data.link_type
+            if not link_type:
+                # Determine link type based on the link
+                link_lower = submission_data.link.lower()
+                if link_lower.startswith("s3://") or ".s3." in link_lower or "amazonaws.com" in link_lower:
+                    link_type = LinkType.S3
+                elif "github.com" in link_lower:
+                    link_type = LinkType.GITHUB
+                elif "gitlab.com" in link_lower:
+                    link_type = LinkType.GITLAB
 
             # Create submission instance
             submission_dict = submission_data.model_dump(exclude={"upload_date_time", "rules"})
@@ -108,8 +118,8 @@ class SubmissionRepository:
             for field, value in update_dict.items():
                 setattr(submission, field, value)
 
-            # Always update the updated_at timestamp
-            submission.updated_at = datetime.utcnow()
+            # Always update the updated_at timestamp with Paris timezone
+            submission.updated_at = get_paris_time()
 
             self.session.add(submission)
             self.session.commit()

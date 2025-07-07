@@ -2,9 +2,17 @@ from datetime import datetime
 from enum import Enum
 from typing import Optional
 from uuid import UUID, uuid4
+import pytz
 
 from pydantic import field_validator
 from sqlmodel import Field, SQLModel
+
+# Paris timezone
+PARIS_TZ = pytz.timezone('Europe/Paris')
+
+def get_paris_time() -> datetime:
+    """Get current time in Paris timezone"""
+    return datetime.now(PARIS_TZ)
 
 
 class SubmissionStatus(str, Enum):
@@ -66,9 +74,9 @@ class Submission(SubmissionBase, table=True):
     __tablename__ = "submission"
 
     id: Optional[UUID] = Field(default_factory=uuid4, primary_key=True)
-    upload_date_time: datetime = Field(default_factory=datetime.utcnow, description="When the submission was uploaded")
+    upload_date_time: datetime = Field(default_factory=get_paris_time, description="When the submission was uploaded")
     status: SubmissionStatus = Field(default=SubmissionStatus.PENDING, description="Current status of the submission")
-    created_at: datetime = Field(default_factory=datetime.utcnow, description="When the record was created")
+    created_at: datetime = Field(default_factory=get_paris_time, description="When the record was created")
     updated_at: Optional[datetime] = Field(default=None, description="When the record was last updated")
 
     # Metadata fields
