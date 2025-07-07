@@ -1,10 +1,18 @@
 from datetime import datetime
 from typing import Optional
 from uuid import UUID
+import pytz
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.domains.submissions.submissions_models import SubmissionStatus
+
+# Paris timezone
+PARIS_TZ = pytz.timezone('Europe/Paris')
+
+def get_paris_time() -> datetime:
+    """Get current time in Paris timezone"""
+    return datetime.now(PARIS_TZ)
 
 
 class SubmissionUpdateDto(BaseModel):
@@ -29,7 +37,7 @@ class SubmissionUpdateDto(BaseModel):
     submitted_by_uuid: Optional[UUID] = None
     file_size_bytes: Optional[int] = None
     file_count: Optional[int] = None
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=get_paris_time)
 
     @field_validator("description")
     def validate_description(cls, v):

@@ -1,5 +1,6 @@
 import time
 from datetime import datetime
+import pytz
 
 import psutil
 from fastapi import APIRouter, Depends, HTTPException
@@ -8,6 +9,13 @@ from sqlmodel import Session, text
 from app.config.config import get_settings
 from app.domains.health.models import DatabaseHealth, HealthCheck, ServiceHealth
 from app.shared.database import get_session
+
+# Paris timezone
+PARIS_TZ = pytz.timezone('Europe/Paris')
+
+def get_paris_time() -> datetime:
+    """Get current time in Paris timezone"""
+    return datetime.now(PARIS_TZ)
 
 router = APIRouter(prefix="/health", tags=["health"])
 settings = get_settings()
@@ -30,7 +38,7 @@ async def health_check(session: Session = Depends(get_session)):
 
     return HealthCheck(
         status="healthy" if database_status == "healthy" else "degraded",
-        timestamp=datetime.utcnow(),
+        timestamp=get_paris_time(),
         version=settings.app_version,
         database_status=database_status,
     )
@@ -76,7 +84,7 @@ async def readiness_check(session: Session = Depends(get_session)):
     try:
         # Test if we can execute a simple query
         session.exec(text("SELECT 1")).first()
-        return {"status": "ready", "timestamp": datetime.utcnow()}
+        return {"status": "ready", "timestamp": get_paris_time()}
     except Exception as e:
         raise HTTPException(status_code=503, detail=f"Service not ready: {str(e)}")
 
@@ -86,7 +94,7 @@ async def liveness_check():
     """
     Liveness check for Kubernetes/container orchestration
     """
-    return {"status": "alive", "timestamp": datetime.now()}
+    return {"status": "alive", "timestamp": get_paris_time()}
 
 
 @router.get("/database")
@@ -117,7 +125,7 @@ async def database_health(session: Session = Depends(get_session)):
             "connection_time_ms": connection_time,
             "basic_query_success": basic_result == 1,
             "required_tables_exist": table_result == 2,
-            "timestamp": datetime.now(),
+            "timestamp": get_paris_time(),
         }
     except Exception as e:
-        return {"status": "unhealthy", "error": str(e), "timestamp": datetime.now()}
+        return {"status": "unhealthy", "error": str(e), "timestamp": get_paris_time()}

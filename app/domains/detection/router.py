@@ -1,12 +1,20 @@
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict
+import pytz
 
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.domains.detection.similarity_detection_service import SimilarityDetectionService
 from app.domains.detection.visualization import VisualizationService
 from app.domains.tokenization.tokenization_service import TokenizationService
+
+# Paris timezone
+PARIS_TZ = pytz.timezone('Europe/Paris')
+
+def get_paris_time() -> datetime:
+    """Get current time in Paris timezone"""
+    return datetime.now(PARIS_TZ)
 
 router = APIRouter(prefix="/detection", tags=["detection"])
 
@@ -114,7 +122,7 @@ async def test_project_similarity(tokenization_service: TokenizationService = De
 
         # Build comprehensive response
         response = {
-            "analysis_timestamp": datetime.utcnow().isoformat(),
+            "analysis_timestamp": get_paris_time().isoformat(),
             "projects": {
                 "calculator": {
                     "files": calc_file_details,
@@ -212,7 +220,7 @@ async def test_project_similarity_simple(tokenization_service: TokenizationServi
         )
 
         return {
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": get_paris_time().isoformat(),
             "calculator_tokens": len(calc_all_tokens),
             "game_tokens": len(game_all_tokens),
             "jaccard_similarity": overall_similarity["jaccard_similarity"],
@@ -267,7 +275,7 @@ async def compare_specific_files(file1: str, file2: str):
         )
 
         return {
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": get_paris_time().isoformat(),
             "files": {"calculator": file1, "game": file2},
             "tokens": {"calculator": len(calc_tokens), "game": len(game_tokens)},
             "similarity": {
@@ -329,7 +337,7 @@ async def get_react_flow_ast_for_files(file1: str, file2: str):
         )
 
         return {
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": get_paris_time().isoformat(),
             "files_compared": {"file1": file1, "file2": file2},
             "layout_used": "elk_layered",
             "react_flow": react_flow_data,
@@ -400,7 +408,7 @@ async def get_react_flow_ast_for_projects():
                     )
 
         return {
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": get_paris_time().isoformat(),
             "total_file_pairs_with_similarity": len(files_with_similarities),
             "layout_used": "elk_layered",
             "file_pairs": files_with_similarities,
@@ -499,7 +507,7 @@ async def get_combined_react_flow_ast_for_projects(layout: str = "elk"):
                         y_offset += 700
 
         return {
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": get_paris_time().isoformat(),
             "total_file_pairs_with_similarity": len(files_with_similarities),
             "files_analyzed": files_with_similarities,
             "layout_used": layout,
@@ -579,7 +587,7 @@ async def get_animated_react_flow_ast_for_files(file1: str, file2: str, layout: 
                     edge["style"]["animation"] = "dash 3s linear infinite"
 
         return {
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": get_paris_time().isoformat(),
             "files_compared": {"file1": file1, "file2": file2},
             "layout_used": layout,
             "react_flow": react_flow_data,
