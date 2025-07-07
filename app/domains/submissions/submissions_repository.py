@@ -168,7 +168,7 @@ class SubmissionRepository:
             raise DatabaseException(f"Failed to count submissions: {str(e)}")
 
     def check_duplicate_submission(
-        self, project_uuid: UUID, group_uuid: UUID, project_step_uuid: UUID, link: str
+        self, project_uuid: UUID, group_uuid: UUID, project_step_uuid: UUID
     ) -> bool:
         """Check if a duplicate submission exists"""
         try:
@@ -176,7 +176,6 @@ class SubmissionRepository:
                 Submission.project_uuid == project_uuid,
                 Submission.group_uuid == group_uuid,
                 Submission.project_step_uuid == project_step_uuid,
-                Submission.link == link,
             )
             existing = self.session.exec(statement).first()
             return existing is not None

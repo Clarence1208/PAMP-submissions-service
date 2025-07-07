@@ -39,11 +39,10 @@ class SubmissionService:
                 project_uuid=submission_data.project_uuid,
                 group_uuid=submission_data.group_uuid,
                 project_step_uuid=submission_data.project_step_uuid,
-                link=submission_data.link,
             )
 
             if is_duplicate:
-                raise ValidationException("A submission with the same project, group, step, and link already exists")
+                raise ValidationException("A submission with the same project, group and step already exists")
 
         # Validate business rules
         self._validate_submission_data(submission_data)
