@@ -1,0 +1,577 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?xml-stylesheet type="text/xsl" href="company.xsl"?>
+
+<!-- XML Sample Document - Company Management System -->
+<!-- This document demonstrates various XML features including: -->
+<!-- - XML declaration and processing instructions -->
+<!-- - Document Type Definition (DTD) -->
+<!-- - Elements with attributes and nested content -->
+<!-- - Namespaces and namespace prefixes -->
+<!-- - CDATA sections for literal text -->
+<!-- - Comments and mixed content -->
+<!-- - Complex hierarchical data structures -->
+
+<!DOCTYPE company [
+    <!ELEMENT company (metadata, departments, employees, projects, settings)>
+    <!ELEMENT metadata (name, description, founded, headquarters, website, contact)>
+    <!ELEMENT departments (department+)>
+    <!ELEMENT department (name, description?, manager?, budget?, employees?)>
+    <!ELEMENT employees (employee+)>
+    <!ELEMENT employee (personal_info, job_info, contact_info, skills?, performance?)>
+    <!ELEMENT projects (project+)>
+    <!ELEMENT project (name, description, status, timeline, team, deliverables?)>
+    <!ELEMENT settings (configurations, policies, integrations)>
+    
+    <!ATTLIST company 
+        id ID #REQUIRED
+        version CDATA #IMPLIED
+        last_updated CDATA #IMPLIED>
+    
+    <!ATTLIST department 
+        id ID #REQUIRED
+        code CDATA #REQUIRED
+        active (true|false) "true">
+    
+    <!ATTLIST employee 
+        id ID #REQUIRED
+        employee_number CDATA #REQUIRED
+        status (active|inactive|terminated) "active"
+        hire_date CDATA #REQUIRED>
+    
+    <!ATTLIST project 
+        id ID #REQUIRED
+        priority (low|medium|high|critical) "medium"
+        confidential (true|false) "false">
+]>
+
+<company 
+    id="tech_solutions_inc" 
+    version="2.1" 
+    last_updated="2024-01-15T10:30:00Z"
+    xmlns="http://company.example.com/schema"
+    xmlns:hr="http://company.example.com/hr"
+    xmlns:finance="http://company.example.com/finance"
+    xmlns:project="http://company.example.com/projects"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://company.example.com/schema company.xsd">
+
+    <!-- Company Metadata -->
+    <metadata>
+        <name>Tech Solutions Inc.</name>
+        <description>
+            <![CDATA[
+            A leading technology company specializing in software development, 
+            cloud solutions, and digital transformation services. We help 
+            businesses modernize their infrastructure and optimize their 
+            operations through innovative technology solutions.
+            ]]>
+        </description>
+        <founded>2010-03-15</founded>
+        <headquarters>
+            <address>
+                <street>123 Innovation Drive</street>
+                <city>San Francisco</city>
+                <state>CA</state>
+                <country>United States</country>
+                <postal_code>94105</postal_code>
+            </address>
+            <coordinates lat="37.7749" lng="-122.4194"/>
+        </headquarters>
+        <website>https://www.techsolutions.com</website>
+        <contact>
+            <phone type="main">+1-555-TECH-HELP</phone>
+            <phone type="support">+1-555-SUPPORT</phone>
+            <email type="general">info@techsolutions.com</email>
+            <email type="support">support@techsolutions.com</email>
+            <social_media>
+                <platform name="LinkedIn">https://linkedin.com/company/techsolutions</platform>
+                <platform name="Twitter">@TechSolutions</platform>
+                <platform name="GitHub">https://github.com/techsolutions</platform>
+            </social_media>
+        </contact>
+    </metadata>
+
+    <!-- Departments Structure -->
+    <departments>
+        <department id="dept_engineering" code="ENG" active="true">
+            <name>Engineering</name>
+            <description>Software development and technical architecture</description>
+            <manager employee_ref="emp_001"/>
+            <finance:budget currency="USD" fiscal_year="2024">
+                <finance:allocated>2500000.00</finance:allocated>
+                <finance:spent>1850000.00</finance:spent>
+                <finance:remaining>650000.00</finance:remaining>
+            </finance:budget>
+            <location>
+                <building>Main Campus</building>
+                <floor>3</floor>
+                <wing>North</wing>
+            </location>
+            <sub_departments>
+                <department id="dept_frontend" code="FE" active="true">
+                    <name>Frontend Development</name>
+                    <manager employee_ref="emp_005"/>
+                </department>
+                <department id="dept_backend" code="BE" active="true">
+                    <name>Backend Development</name>
+                    <manager employee_ref="emp_006"/>
+                </department>
+                <department id="dept_devops" code="DEVOPS" active="true">
+                    <name>DevOps &amp; Infrastructure</name>
+                    <manager employee_ref="emp_007"/>
+                </department>
+            </sub_departments>
+        </department>
+
+        <department id="dept_design" code="DESIGN" active="true">
+            <name>Design &amp; UX</name>
+            <description>User experience design and visual design</description>
+            <manager employee_ref="emp_002"/>
+            <finance:budget currency="USD" fiscal_year="2024">
+                <finance:allocated>800000.00</finance:allocated>
+                <finance:spent>600000.00</finance:spent>
+                <finance:remaining>200000.00</finance:remaining>
+            </finance:budget>
+        </department>
+
+        <department id="dept_sales" code="SALES" active="true">
+            <name>Sales &amp; Marketing</name>
+            <description>Customer acquisition and revenue generation</description>
+            <manager employee_ref="emp_003"/>
+            <finance:budget currency="USD" fiscal_year="2024">
+                <finance:allocated>1200000.00</finance:allocated>
+                <finance:spent>950000.00</finance:spent>
+                <finance:remaining>250000.00</finance:remaining>
+            </finance:budget>
+        </department>
+
+        <department id="dept_hr" code="HR" active="true">
+            <name>Human Resources</name>
+            <description>Talent management and organizational development</description>
+            <manager employee_ref="emp_004"/>
+            <finance:budget currency="USD" fiscal_year="2024">
+                <finance:allocated>600000.00</finance:allocated>
+                <finance:spent>450000.00</finance:spent>
+                <finance:remaining>150000.00</finance:remaining>
+            </finance:budget>
+        </department>
+    </departments>
+
+    <!-- Employee Records -->
+    <employees>
+        <employee id="emp_001" employee_number="TSI-001" status="active" hire_date="2010-04-01">
+            <hr:personal_info>
+                <hr:name>
+                    <hr:first>John</hr:first>
+                    <hr:middle>Michael</hr:middle>
+                    <hr:last>Smith</hr:last>
+                    <hr:preferred>John</hr:preferred>
+                </hr:name>
+                <hr:birth_date>1985-07-15</hr:birth_date>
+                <hr:gender>M</hr:gender>
+                <hr:nationality>US</hr:nationality>
+                <hr:emergency_contact>
+                    <hr:name>Jane Smith</hr:name>
+                    <hr:relationship>Spouse</hr:relationship>
+                    <hr:phone>+1-555-0101</hr:phone>
+                </hr:emergency_contact>
+            </hr:personal_info>
+
+            <hr:job_info>
+                <hr:title>Chief Technology Officer</hr:title>
+                <hr:department dept_ref="dept_engineering"/>
+                <hr:level>Executive</hr:level>
+                <hr:employment_type>Full-time</hr:employment_type>
+                <hr:salary currency="USD" period="annual">180000.00</hr:salary>
+                <hr:benefits>
+                    <hr:health_insurance>Premium Plan</hr:health_insurance>
+                    <hr:dental_insurance>Standard Plan</hr:dental_insurance>
+                    <hr:vision_insurance>Standard Plan</hr:vision_insurance>
+                    <hr:retirement_401k match_percentage="6.0"/>
+                    <hr:vacation_days>25</hr:vacation_days>
+                    <hr:sick_days>10</hr:sick_days>
+                </hr:benefits>
+            </hr:job_info>
+
+            <hr:contact_info>
+                <hr:email type="work">john.smith@techsolutions.com</hr:email>
+                <hr:email type="personal">john.smith@email.com</hr:email>
+                <hr:phone type="work">+1-555-0100</hr:phone>
+                <hr:phone type="mobile">+1-555-0102</hr:phone>
+                <hr:address type="home">
+                    <hr:street>456 Residential Ave</hr:street>
+                    <hr:city>Palo Alto</hr:city>
+                    <hr:state>CA</hr:state>
+                    <hr:postal_code>94301</hr:postal_code>
+                    <hr:country>US</hr:country>
+                </hr:address>
+            </hr:contact_info>
+
+            <hr:skills>
+                <hr:technical_skills>
+                    <hr:skill name="Software Architecture" level="Expert" years_experience="12"/>
+                    <hr:skill name="JavaScript" level="Expert" years_experience="15"/>
+                    <hr:skill name="Python" level="Advanced" years_experience="10"/>
+                    <hr:skill name="AWS" level="Advanced" years_experience="8"/>
+                    <hr:skill name="Docker" level="Advanced" years_experience="6"/>
+                    <hr:skill name="Kubernetes" level="Intermediate" years_experience="4"/>
+                </hr:technical_skills>
+                <hr:soft_skills>
+                    <hr:skill name="Leadership" level="Expert"/>
+                    <hr:skill name="Communication" level="Expert"/>
+                    <hr:skill name="Strategic Planning" level="Advanced"/>
+                </hr:soft_skills>
+                <hr:certifications>
+                    <hr:certification name="AWS Solutions Architect" issued_date="2020-03-15" expires_date="2026-03-15"/>
+                    <hr:certification name="PMP" issued_date="2018-06-20" expires_date="2024-06-20"/>
+                </hr:certifications>
+            </hr:skills>
+
+            <hr:performance>
+                <hr:reviews>
+                    <hr:review period="2023" rating="Exceeds Expectations">
+                        <hr:goals_met>95%</hr:goals_met>
+                        <hr:feedback>
+                            <![CDATA[
+                            John has demonstrated exceptional leadership in guiding the 
+                            engineering team through several critical projects. His 
+                            strategic vision and technical expertise have been instrumental 
+                            in our platform modernization efforts.
+                            ]]>
+                        </hr:feedback>
+                        <hr:areas_for_improvement>
+                            <hr:area>Delegation of routine tasks</hr:area>
+                            <hr:area>Cross-department collaboration</hr:area>
+                        </hr:areas_for_improvement>
+                    </hr:review>
+                </hr:reviews>
+            </hr:performance>
+        </employee>
+
+        <employee id="emp_002" employee_number="TSI-002" status="active" hire_date="2012-01-15">
+            <hr:personal_info>
+                <hr:name>
+                    <hr:first>Sarah</hr:first>
+                    <hr:last>Johnson</hr:last>
+                    <hr:preferred>Sarah</hr:preferred>
+                </hr:name>
+                <hr:birth_date>1988-11-22</hr:birth_date>
+                <hr:gender>F</hr:gender>
+                <hr:nationality>US</hr:nationality>
+            </hr:personal_info>
+
+            <hr:job_info>
+                <hr:title>Design Director</hr:title>
+                <hr:department dept_ref="dept_design"/>
+                <hr:level>Senior Management</hr:level>
+                <hr:employment_type>Full-time</hr:employment_type>
+                <hr:salary currency="USD" period="annual">145000.00</hr:salary>
+            </hr:job_info>
+
+            <hr:contact_info>
+                <hr:email type="work">sarah.johnson@techsolutions.com</hr:email>
+                <hr:phone type="work">+1-555-0200</hr:phone>
+            </hr:contact_info>
+
+            <hr:skills>
+                <hr:technical_skills>
+                    <hr:skill name="UI/UX Design" level="Expert" years_experience="10"/>
+                    <hr:skill name="Figma" level="Expert" years_experience="5"/>
+                    <hr:skill name="Adobe Creative Suite" level="Expert" years_experience="12"/>
+                    <hr:skill name="Prototyping" level="Advanced" years_experience="8"/>
+                    <hr:skill name="User Research" level="Advanced" years_experience="7"/>
+                </hr:technical_skills>
+            </hr:skills>
+        </employee>
+
+        <employee id="emp_003" employee_number="TSI-003" status="active" hire_date="2015-06-01">
+            <hr:personal_info>
+                <hr:name>
+                    <hr:first>Michael</hr:first>
+                    <hr:last>Brown</hr:last>
+                    <hr:preferred>Mike</hr:preferred>
+                </hr:name>
+                <hr:birth_date>1982-03-10</hr:birth_date>
+                <hr:gender>M</hr:gender>
+            </hr:personal_info>
+
+            <hr:job_info>
+                <hr:title>VP of Sales</hr:title>
+                <hr:department dept_ref="dept_sales"/>
+                <hr:level>Executive</hr:level>
+                <hr:employment_type>Full-time</hr:employment_type>
+                <hr:salary currency="USD" period="annual">165000.00</hr:salary>
+                <hr:commission_structure>
+                    <hr:base_rate>0.02</hr:base_rate>
+                    <hr:tier_1_threshold>1000000</hr:tier_1_threshold>
+                    <hr:tier_1_rate>0.03</hr:tier_1_rate>
+                    <hr:tier_2_threshold>2000000</hr:tier_2_threshold>
+                    <hr:tier_2_rate>0.04</hr:tier_2_rate>
+                </hr:commission_structure>
+            </hr:job_info>
+
+            <hr:contact_info>
+                <hr:email type="work">michael.brown@techsolutions.com</hr:email>
+                <hr:phone type="work">+1-555-0300</hr:phone>
+            </hr:contact_info>
+        </employee>
+
+        <!-- Additional employees would follow similar structure -->
+        <employee id="emp_004" employee_number="TSI-004" status="active" hire_date="2013-09-12">
+            <!-- Abbreviated for brevity -->
+            <hr:personal_info>
+                <hr:name>
+                    <hr:first>Emily</hr:first>
+                    <hr:last>Davis</hr:last>
+                </hr:name>
+            </hr:personal_info>
+            <hr:job_info>
+                <hr:title>HR Director</hr:title>
+                <hr:department dept_ref="dept_hr"/>
+            </hr:job_info>
+            <hr:contact_info>
+                <hr:email type="work">emily.davis@techsolutions.com</hr:email>
+            </hr:contact_info>
+        </employee>
+    </employees>
+
+    <!-- Project Management -->
+    <projects>
+        <project:project id="proj_001" priority="high" confidential="false">
+            <project:name>Customer Portal Redesign</project:name>
+            <project:description>
+                <![CDATA[
+                Complete redesign of the customer portal interface with focus on 
+                improved user experience, mobile responsiveness, and performance 
+                optimization. This project includes user research, design system 
+                creation, and full implementation.
+                ]]>
+            </project:description>
+            <project:status>In Progress</project:status>
+            <project:timeline>
+                <project:start_date>2024-01-15</project:start_date>
+                <project:end_date>2024-06-30</project:end_date>
+                <project:milestones>
+                    <project:milestone id="m1" date="2024-02-15" status="completed">
+                        <project:title>User Research Complete</project:title>
+                        <project:deliverables>
+                            <project:deliverable>User personas document</project:deliverable>
+                            <project:deliverable>User journey maps</project:deliverable>
+                            <project:deliverable>Usability testing report</project:deliverable>
+                        </project:deliverables>
+                    </project:milestone>
+                    <project:milestone id="m2" date="2024-03-30" status="in_progress">
+                        <project:title>Design System &amp; Prototypes</project:title>
+                        <project:deliverables>
+                            <project:deliverable>Design system documentation</project:deliverable>
+                            <project:deliverable>High-fidelity prototypes</project:deliverable>
+                            <project:deliverable>Accessibility guidelines</project:deliverable>
+                        </project:deliverables>
+                    </project:milestone>
+                    <project:milestone id="m3" date="2024-05-15" status="pending">
+                        <project:title>Development Phase 1</project:title>
+                    </project:milestone>
+                    <project:milestone id="m4" date="2024-06-30" status="pending">
+                        <project:title>Testing &amp; Launch</project:title>
+                    </project:milestone>
+                </project:milestones>
+            </project:timeline>
+
+            <project:team>
+                <project:team_member employee_ref="emp_001" role="Project Sponsor"/>
+                <project:team_member employee_ref="emp_002" role="Design Lead"/>
+                <project:team_member employee_ref="emp_005" role="Frontend Lead"/>
+                <project:team_member employee_ref="emp_006" role="Backend Lead"/>
+                <project:stakeholders>
+                    <project:stakeholder name="Customer Success Team" type="internal"/>
+                    <project:stakeholder name="Key Customers" type="external"/>
+                    <project:stakeholder name="Marketing Team" type="internal"/>
+                </project:stakeholders>
+            </project:team>
+
+            <project:budget currency="USD">
+                <project:allocated>450000.00</project:allocated>
+                <project:spent>275000.00</project:spent>
+                <project:committed>125000.00</project:committed>
+                <project:remaining>50000.00</project:remaining>
+            </project:budget>
+
+            <project:risks>
+                <project:risk id="risk_001" severity="medium" probability="low">
+                    <project:description>Potential delay in user testing due to customer availability</project:description>
+                    <project:mitigation>Schedule testing sessions well in advance and have backup participants</project:mitigation>
+                </project:risk>
+                <project:risk id="risk_002" severity="high" probability="medium">
+                    <project:description>Integration challenges with legacy systems</project:description>
+                    <project:mitigation>Conduct thorough technical analysis and have contingency plans</project:mitigation>
+                </project:risk>
+            </project:risks>
+        </project:project>
+
+        <project:project id="proj_002" priority="critical" confidential="true">
+            <project:name>Security Infrastructure Upgrade</project:name>
+            <project:description>
+                <![CDATA[
+                Comprehensive security infrastructure upgrade including implementation 
+                of zero-trust architecture, enhanced monitoring systems, and compliance 
+                with SOC 2 Type II requirements.
+                ]]>
+            </project:description>
+            <project:status>Planning</project:status>
+            <project:timeline>
+                <project:start_date>2024-03-01</project:start_date>
+                <project:end_date>2024-12-31</project:end_date>
+            </project:timeline>
+            <project:team>
+                <project:team_member employee_ref="emp_007" role="Security Lead"/>
+                <project:team_member employee_ref="emp_001" role="Technical Advisor"/>
+            </project:team>
+            <project:classification level="confidential">
+                <project:access_control>
+                    <project:authorized_personnel>
+                        <project:person employee_ref="emp_001"/>
+                        <project:person employee_ref="emp_007"/>
+                    </project:authorized_personnel>
+                </project:access_control>
+            </project:classification>
+        </project:project>
+    </projects>
+
+    <!-- Company Settings and Configuration -->
+    <settings>
+        <configurations>
+            <working_hours>
+                <standard_hours_per_week>40</standard_hours_per_week>
+                <flexible_schedule enabled="true"/>
+                <remote_work_policy>
+                    <allowed_days_per_week>3</allowed_days_per_week>
+                    <full_remote_eligible roles="Senior+"/>
+                </remote_work_policy>
+                <core_hours>
+                    <start_time>10:00</start_time>
+                    <end_time>15:00</end_time>
+                    <timezone>PST</timezone>
+                </core_hours>
+            </working_hours>
+
+            <holidays fiscal_year="2024">
+                <holiday date="2024-01-01" name="New Year's Day" type="federal"/>
+                <holiday date="2024-01-15" name="Martin Luther King Jr. Day" type="federal"/>
+                <holiday date="2024-02-19" name="Presidents' Day" type="federal"/>
+                <holiday date="2024-05-27" name="Memorial Day" type="federal"/>
+                <holiday date="2024-07-04" name="Independence Day" type="federal"/>
+                <holiday date="2024-09-02" name="Labor Day" type="federal"/>
+                <holiday date="2024-11-28" name="Thanksgiving Day" type="federal"/>
+                <holiday date="2024-11-29" name="Day after Thanksgiving" type="company"/>
+                <holiday date="2024-12-25" name="Christmas Day" type="federal"/>
+                <holiday date="2024-12-31" name="New Year's Eve" type="company"/>
+            </holidays>
+
+            <expense_policies>
+                <travel>
+                    <domestic_flight_limit currency="USD">800.00</domestic_flight_limit>
+                    <international_flight_limit currency="USD">2000.00</international_flight_limit>
+                    <hotel_limit_per_night currency="USD">200.00</hotel_limit_per_night>
+                    <meal_allowance_per_day currency="USD">75.00</meal_allowance_per_day>
+                </travel>
+                <equipment>
+                    <laptop_budget currency="USD">2500.00</laptop_budget>
+                    <monitor_budget currency="USD">500.00</monitor_budget>
+                    <office_supplies_monthly currency="USD">100.00</office_supplies_monthly>
+                </equipment>
+            </expense_policies>
+        </configurations>
+
+        <policies>
+            <code_of_conduct version="2.1" effective_date="2024-01-01">
+                <policy_document>company_policies/code_of_conduct_v2.1.pdf</policy_document>
+                <acknowledgment_required>true</acknowledgment_required>
+                <review_frequency>Annual</review_frequency>
+            </code_of_conduct>
+
+            <security_policy version="1.5" effective_date="2024-01-01">
+                <password_requirements>
+                    <min_length>12</min_length>
+                    <require_uppercase>true</require_uppercase>
+                    <require_lowercase>true</require_lowercase>
+                    <require_numbers>true</require_numbers>
+                    <require_special_chars>true</require_special_chars>
+                    <expiration_days>90</expiration_days>
+                </password_requirements>
+                <two_factor_auth required="true"/>
+                <device_encryption required="true"/>
+            </security_policy>
+
+            <data_retention>
+                <employee_records retention_years="7"/>
+                <financial_records retention_years="7"/>
+                <project_documents retention_years="5"/>
+                <email_communications retention_years="3"/>
+                <system_logs retention_days="365"/>
+            </data_retention>
+        </policies>
+
+        <integrations>
+            <hr_system>
+                <name>BambooHR</name>
+                <api_endpoint>https://api.bamboohr.com/api/gateway.php/techsolutions</api_endpoint>
+                <sync_frequency>Daily</sync_frequency>
+                <sync_time>02:00</sync_time>
+            </hr_system>
+
+            <payroll_system>
+                <name>ADP Workforce Now</name>
+                <integration_type>API</integration_type>
+                <sync_frequency>Bi-weekly</sync_frequency>
+            </payroll_system>
+
+            <project_management>
+                <name>Jira</name>
+                <url>https://techsolutions.atlassian.net</url>
+                <integration_type>Webhook</integration_type>
+            </project_management>
+
+            <communication>
+                <platform name="Slack">
+                    <workspace>techsolutions.slack.com</workspace>
+                    <bot_integrations>
+                        <bot name="HRBot" purpose="HR notifications"/>
+                        <bot name="DeployBot" purpose="Deployment notifications"/>
+                    </bot_integrations>
+                </platform>
+                <platform name="Microsoft Teams">
+                    <tenant>techsolutions.onmicrosoft.com</tenant>
+                </platform>
+            </communication>
+        </integrations>
+    </settings>
+
+    <!-- Processing instruction for data validation -->
+    <?company-validator check="all" strict="true"?>
+    
+    <!-- Custom application-specific data -->
+    <custom_data>
+        <application_metadata>
+            <created_by>Company Management System v2.1</created_by>
+            <export_timestamp>2024-01-15T10:30:00Z</export_timestamp>
+            <format_version>2.0</format_version>
+            <checksum algorithm="SHA-256">a1b2c3d4e5f6789012345678901234567890abcdef</checksum>
+        </application_metadata>
+        
+        <analytics>
+            <employee_count total="150" active="148" on_leave="2"/>
+            <department_distribution>
+                <dept name="Engineering" count="75" percentage="50.0"/>
+                <dept name="Sales" count="35" percentage="23.3"/>
+                <dept name="Design" count="20" percentage="13.3"/>
+                <dept name="HR" count="20" percentage="13.4"/>
+            </department_distribution>
+            <project_statistics>
+                <active_projects>12</active_projects>
+                <completed_projects_ytd>8</completed_projects_ytd>
+                <total_budget_allocated currency="USD">5500000.00</total_budget_allocated>
+            </project_statistics>
+        </analytics>
+    </custom_data>
+
+</company> 

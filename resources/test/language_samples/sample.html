@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Sample HTML5 page demonstrating modern web features">
+    <title>Sample HTML5 Page</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+</head>
+<body>
+    <header role="banner">
+        <nav aria-label="Main navigation">
+            <h1>Sample Website</h1>
+            <ul>
+                <li><a href="#home">Home</a></li>
+                <li><a href="#about">About</a></li>
+                <li><a href="#contact">Contact</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main role="main">
+        <section id="home" aria-labelledby="home-heading">
+            <h2 id="home-heading">Welcome to Our Site</h2>
+            <p>This is a sample HTML5 page demonstrating semantic markup and modern features.</p>
+            
+            <article>
+                <h3>Featured Article</h3>
+                <time datetime="2024-01-15">January 15, 2024</time>
+                <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</p>
+                <footer>
+                    <small>By <cite>John Doe</cite></small>
+                </footer>
+            </article>
+        </section>
+
+        <section id="features" aria-labelledby="features-heading">
+            <h2 id="features-heading">HTML5 Features</h2>
+            
+            <details>
+                <summary>Click to expand</summary>
+                <p>This content is hidden by default and can be toggled.</p>
+            </details>
+
+            <figure>
+                <picture>
+                    <source media="(max-width: 768px)" srcset="small-image.jpg">
+                    <source media="(max-width: 1200px)" srcset="medium-image.jpg">
+                    <img src="large-image.jpg" alt="Sample responsive image" loading="lazy">
+                </picture>
+                <figcaption>A responsive image with multiple sources</figcaption>
+            </figure>
+
+            <video controls preload="metadata" poster="video-poster.jpg">
+                <source src="sample-video.mp4" type="video/mp4">
+                <source src="sample-video.webm" type="video/webm">
+                <track kind="subtitles" src="subtitles.vtt" srclang="en" label="English">
+                Your browser does not support the video element.
+            </video>
+
+            <audio controls>
+                <source src="sample-audio.ogg" type="audio/ogg">
+                <source src="sample-audio.mp3" type="audio/mpeg">
+                Your browser does not support the audio element.
+            </audio>
+        </section>
+
+        <section id="form-example" aria-labelledby="form-heading">
+            <h2 id="form-heading">Form Example</h2>
+            <form action="/submit" method="post">
+                <fieldset>
+                    <legend>Personal Information</legend>
+                    
+                    <label for="name">Name:</label>
+                    <input type="text" id="name" name="name" required autocomplete="name">
+                    
+                    <label for="email">Email:</label>
+                    <input type="email" id="email" name="email" required autocomplete="email">
+                    
+                    <label for="phone">Phone:</label>
+                    <input type="tel" id="phone" name="phone" autocomplete="tel">
+                    
+                    <label for="birthday">Birthday:</label>
+                    <input type="date" id="birthday" name="birthday">
+                    
+                    <label for="range">Rating:</label>
+                    <input type="range" id="range" name="rating" min="1" max="10" value="5">
+                    <output for="range">5</output>
+                </fieldset>
+
+                <fieldset>
+                    <legend>Preferences</legend>
+                    
+                    <label for="color">Favorite Color:</label>
+                    <input type="color" id="color" name="color" value="#007bff">
+                    
+                    <label for="message">Message:</label>
+                    <textarea id="message" name="message" rows="4" placeholder="Enter your message here..."></textarea>
+                </fieldset>
+
+                <button type="submit">Submit</button>
+            </form>
+        </section>
+    </main>
+
+    <aside role="complementary">
+        <h3>Quick Links</h3>
+        <ul>
+            <li><a href="#" rel="external">External Link</a></li>
+            <li><a href="document.pdf" download>Download PDF</a></li>
+        </ul>
+    </aside>
+
+    <footer role="contentinfo">
+        <p>&copy; 2024 Sample Website. All rights reserved.</p>
+        <address>
+            Contact us at <a href="mailto:info@example.com">info@example.com</a>
+        </address>
+    </footer>
+
+    <script src="script.js" defer></script>
+</body>
+</html> 

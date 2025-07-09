@@ -5,12 +5,13 @@ from uuid import UUID
 
 from sqlmodel import Session
 
+from app.domains.submissions.detection_integration_service import DetectionIntegrationService
 from app.domains.submissions.dto.create_submission_dto import CreateSubmissionDto
 from app.domains.submissions.dto.create_submission_response_dto import CreateSubmissionResponseDto
 from app.domains.submissions.dto.submission_response_dto import SubmissionResponseDto
 from app.domains.submissions.dto.submission_update_dto import SubmissionUpdateDto
 from app.domains.submissions.rules.rule_service import RuleService
-from app.domains.submissions.submissions_models import LinkType
+from app.domains.submissions.submissions_models import LinkType, SubmissionStatus
 from app.domains.submissions.submissions_repository import SubmissionRepository
 from app.shared.exceptions import NotFoundException, ValidationException
 
@@ -23,13 +24,14 @@ class SubmissionService:
     def __init__(self, session: Session):
         self.repository = SubmissionRepository(session)
         self.rule_service = RuleService()
+        self.detection_service = DetectionIntegrationService(session)
 
     def create_submission(
-        self,
-        submission_data: CreateSubmissionDto,
-        ip_address: Optional[str] = None,
-        user_agent: Optional[str] = None,
-        allow_duplicates: bool = False,
+            self,
+            submission_data: CreateSubmissionDto,
+            ip_address: Optional[str] = None,
+            user_agent: Optional[str] = None,
+            allow_duplicates: bool = False,
     ) -> CreateSubmissionResponseDto:
         """Create a new submission with business logic validation"""
 
@@ -133,6 +135,22 @@ class SubmissionService:
             rule_results_json=rule_results_json if "rule_results_json" in locals() else None,
         )
 
+        # Update submission status to completed for similarity detection
+        update_data = SubmissionUpdateDto(status=SubmissionStatus.COMPLETED)
+        submission = self.repository.update(submission.id, update_data)
+
+        # Run similarity detection against other submissions in the same project step
+        similarity_ids = []
+        try:
+            logger.info(f"Starting similarity detection for submission {submission.id}")
+            similarity_ids = self.detection_service.process_submission_similarities(submission)
+            logger.info(f"Similarity detection completed for submission {submission.id}. "
+                        f"Created {len(similarity_ids)} similarity records.")
+        except Exception as e:
+            logger.error(f"Similarity detection failed for submission {submission.id}: {str(e)}")
+            # Don't fail the submission creation if similarity detection fails
+            # This allows submissions to be created even if detection has issues
+
         # Add rule execution results to the response if any were executed
         response_data = {
             "success": True,
@@ -140,6 +158,20 @@ class SubmissionService:
             "submission_id": submission.id,
             "data": SubmissionResponseDto.model_validate(submission.model_dump()),
         }
+
+        # Add similarity detection metadata if available
+        if similarity_ids:
+            response_data["similarity_detection"] = {
+                "status": "completed",
+                "comparisons_created": len(similarity_ids),
+                "similarity_ids": similarity_ids,
+                "message": f"Similarity detection completed. {len(similarity_ids)} comparisons created."
+            }
+        else:
+            response_data["similarity_detection"] = {
+                "status": "no_comparisons",
+                "message": "No other submissions found for comparison or similarity detection failed."
+            }
 
         # Include rule results from execution or from stored submission
         if rule_results:
@@ -220,7 +252,7 @@ class SubmissionService:
         return [SubmissionResponseDto.model_validate(sub.model_dump()) for sub in submissions]
 
     def get_submissions_by_project_step(
-        self, project_uuid: UUID, project_step_uuid: UUID
+            self, project_uuid: UUID, project_step_uuid: UUID
     ) -> List[SubmissionResponseDto]:
         """Get all submissions for a specific project step"""
         submissions = self.repository.get_by_project_step(project_uuid, project_step_uuid)
@@ -320,3 +352,24 @@ class SubmissionService:
         # Validate description length
         if submission_data.description and len(submission_data.description) > 1000:
             raise ValidationException("Description cannot exceed 1000 characters")
+
+    def get_submission_similarities(self, submission_id: UUID) -> List[dict]:
+        """Get all similarity results for a submission"""
+        return self.detection_service.get_submission_similarities(submission_id)
+
+    def get_detailed_comparison(self, similarity_id: UUID) -> dict:
+        """Get detailed comparison results including visualization data"""
+        return self.detection_service.get_detailed_comparison(similarity_id)
+
+    def get_project_step_statistics(self, project_uuid: UUID, project_step_uuid: UUID) -> dict:
+        """Get similarity statistics for a project step"""
+        return self.detection_service.get_project_step_statistics(project_uuid, project_step_uuid)
+
+    def get_high_similarity_alerts(
+            self,
+            project_uuid: UUID,
+            project_step_uuid: UUID,
+            threshold: float = 0.7
+    ) -> List[dict]:
+        """Get high similarity alerts for a project step"""
+        return self.detection_service.get_high_similarity_alerts(project_uuid, project_step_uuid, threshold)

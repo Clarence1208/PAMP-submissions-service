@@ -1,0 +1,777 @@
+# YAML Sample Configuration - Cloud Infrastructure Management
+# This file demonstrates various YAML features including:
+# - Scalar data types (strings, numbers, booleans, dates)
+# - Collections (sequences and mappings)
+# - Multi-line strings (literal and folded)
+# - Anchors and aliases for reusability
+# - Complex nested structures
+# - Comments and documentation
+# - Different YAML syntax styles
+
+---
+# Document metadata
+apiVersion: v1
+kind: Configuration
+metadata:
+  name: cloud-infrastructure-config
+  version: "2.1.0"
+  created: 2024-01-15T10:30:00Z
+  description: |
+    Comprehensive cloud infrastructure configuration demonstrating
+    various YAML features and best practices for complex deployments.
+    
+    This configuration manages multiple environments, services, and
+    deployment strategies across different cloud providers.
+
+# Global configuration anchors for reusability
+x-common-labels: &common-labels
+  managed-by: infrastructure-team
+  environment: production
+  version: v2.1.0
+  monitoring: enabled
+
+x-resource-limits: &default-limits
+  cpu: "1000m"
+  memory: "2Gi"
+  storage: "10Gi"
+
+x-health-check: &health-check
+  path: /health
+  port: 8080
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  successThreshold: 1
+  failureThreshold: 3
+
+x-security-context: &security-context
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+  capabilities:
+    drop:
+      - ALL
+    add:
+      - NET_BIND_SERVICE
+
+# Environment configurations
+environments:
+  development:
+    cluster:
+      name: dev-cluster
+      region: us-west-2
+      nodeCount: 3
+      nodeType: t3.medium
+      kubernetes:
+        version: "1.28"
+        features:
+          - rbac
+          - network-policies
+          - pod-security-standards
+    
+    services:
+      replicas: 1
+      resources:
+        limits:
+          <<: *default-limits
+        requests:
+          cpu: "100m"
+          memory: "256Mi"
+      
+    database:
+      type: postgresql
+      version: "15"
+      instance: db.t3.micro
+      storage: 20
+      backupRetention: 7
+      
+    monitoring:
+      enabled: true
+      metrics:
+        - prometheus
+        - grafana
+      logging:
+        level: debug
+        retention: "7d"
+
+  staging:
+    cluster:
+      name: staging-cluster
+      region: us-west-2
+      nodeCount: 5
+      nodeType: t3.large
+      kubernetes:
+        version: "1.28"
+        features:
+          - rbac
+          - network-policies
+          - pod-security-standards
+          - service-mesh
+    
+    services:
+      replicas: 2
+      resources:
+        limits:
+          cpu: "2000m"
+          memory: "4Gi"
+          storage: "20Gi"
+        requests:
+          cpu: "500m"
+          memory: "1Gi"
+      
+    database:
+      type: postgresql
+      version: "15"
+      instance: db.t3.small
+      storage: 100
+      backupRetention: 14
+      readReplicas: 1
+      
+    monitoring:
+      enabled: true
+      metrics:
+        - prometheus
+        - grafana
+        - datadog
+      logging:
+        level: info
+        retention: "14d"
+      alerting:
+        enabled: true
+        channels:
+          - slack
+          - email
+
+  production:
+    cluster:
+      name: prod-cluster
+      region: us-west-1
+      nodeCount: 10
+      nodeType: c5.xlarge
+      multiAZ: true
+      kubernetes:
+        version: "1.28"
+        features:
+          - rbac
+          - network-policies
+          - pod-security-standards
+          - service-mesh
+          - admission-controllers
+    
+    services:
+      replicas: 5
+      resources:
+        limits:
+          cpu: "4000m"
+          memory: "8Gi"
+          storage: "50Gi"
+        requests:
+          cpu: "1000m"
+          memory: "2Gi"
+      autoscaling:
+        enabled: true
+        minReplicas: 3
+        maxReplicas: 20
+        targetCPUUtilization: 70
+        targetMemoryUtilization: 80
+      
+    database:
+      type: postgresql
+      version: "15"
+      instance: db.r5.xlarge
+      storage: 500
+      encrypted: true
+      backupRetention: 30
+      readReplicas: 3
+      multiAZ: true
+      
+    monitoring:
+      enabled: true
+      metrics:
+        - prometheus
+        - grafana
+        - datadog
+        - newrelic
+      logging:
+        level: warn
+        retention: "30d"
+      alerting:
+        enabled: true
+        channels:
+          - slack
+          - email
+          - pagerduty
+        rules:
+          - name: high-cpu-usage
+            condition: cpu > 85%
+            severity: warning
+          - name: memory-pressure
+            condition: memory > 90%
+            severity: critical
+          - name: disk-space
+            condition: disk_usage > 85%
+            severity: warning
+
+# Application configurations
+applications:
+  # Web application
+  web-app:
+    image: 
+      repository: techsolutions/web-app
+      tag: v2.1.0
+      pullPolicy: IfNotPresent
+    
+    deployment:
+      strategy: RollingUpdate
+      maxSurge: 25%
+      maxUnavailable: 25%
+    
+    service:
+      type: ClusterIP
+      port: 80
+      targetPort: 8080
+      
+    ingress:
+      enabled: true
+      annotations:
+        kubernetes.io/ingress.class: nginx
+        cert-manager.io/cluster-issuer: letsencrypt-prod
+        nginx.ingress.kubernetes.io/rate-limit: "100"
+        nginx.ingress.kubernetes.io/ssl-redirect: "true"
+      hosts:
+        - host: app.techsolutions.com
+          paths:
+            - path: /
+              pathType: Prefix
+      tls:
+        - secretName: web-app-tls
+          hosts:
+            - app.techsolutions.com
+    
+    config:
+      # Environment variables
+      env:
+        NODE_ENV: production
+        API_BASE_URL: https://api.techsolutions.com
+        REDIS_URL: redis://redis-cluster:6379
+        LOG_LEVEL: info
+        
+      # Configuration from ConfigMap
+      configMap:
+        DATABASE_HOST: postgres-primary.database.svc.cluster.local
+        DATABASE_PORT: "5432"
+        DATABASE_NAME: web_app_prod
+        CACHE_TTL: "3600"
+        SESSION_TIMEOUT: "1800"
+        
+      # Secrets (references only)
+      secrets:
+        DATABASE_PASSWORD:
+          secretKeyRef:
+            name: postgres-credentials
+            key: password
+        JWT_SECRET:
+          secretKeyRef:
+            name: app-secrets
+            key: jwt-secret
+        ENCRYPTION_KEY:
+          secretKeyRef:
+            name: app-secrets
+            key: encryption-key
+    
+    healthChecks:
+      livenessProbe:
+        <<: *health-check
+        path: /health/live
+      readinessProbe:
+        <<: *health-check
+        path: /health/ready
+        
+    security:
+      <<: *security-context
+      podSecurityContext:
+        seccompProfile:
+          type: RuntimeDefault
+        
+    labels:
+      <<: *common-labels
+      app: web-app
+      tier: frontend
+
+  # API service
+  api-service:
+    image:
+      repository: techsolutions/api-service
+      tag: v2.1.0
+      pullPolicy: IfNotPresent
+    
+    deployment:
+      strategy: RollingUpdate
+      maxSurge: 1
+      maxUnavailable: 0
+    
+    service:
+      type: ClusterIP
+      port: 8080
+      targetPort: 8080
+      
+    config:
+      env:
+        SPRING_PROFILES_ACTIVE: production
+        SERVER_PORT: "8080"
+        MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: health,metrics,prometheus
+        
+      configMap:
+        DATABASE_URL: jdbc:postgresql://postgres-primary.database.svc.cluster.local:5432/api_service_prod
+        REDIS_CLUSTER_NODES: redis-0.redis:6379,redis-1.redis:6379,redis-2.redis:6379
+        KAFKA_BOOTSTRAP_SERVERS: kafka-0.kafka:9092,kafka-1.kafka:9092,kafka-2.kafka:9092
+        
+      secrets:
+        DATABASE_USERNAME:
+          secretKeyRef:
+            name: postgres-credentials
+            key: username
+        DATABASE_PASSWORD:
+          secretKeyRef:
+            name: postgres-credentials
+            key: password
+    
+    healthChecks:
+      livenessProbe:
+        <<: *health-check
+        path: /actuator/health/liveness
+      readinessProbe:
+        <<: *health-check
+        path: /actuator/health/readiness
+        
+    labels:
+      <<: *common-labels
+      app: api-service
+      tier: backend
+
+  # Worker service
+  worker-service:
+    image:
+      repository: techsolutions/worker-service
+      tag: v2.1.0
+      pullPolicy: IfNotPresent
+    
+    deployment:
+      strategy: Recreate
+    
+    config:
+      env:
+        WORKER_CONCURRENCY: "4"
+        QUEUE_NAME: default
+        RETRY_ATTEMPTS: "3"
+        
+      configMap:
+        REDIS_URL: redis://redis-cluster:6379
+        KAFKA_GROUP_ID: worker-group
+        
+    labels:
+      <<: *common-labels
+      app: worker-service
+      tier: worker
+
+# Infrastructure services
+infrastructure:
+  # Database configuration
+  database:
+    postgresql:
+      primary:
+        image: postgres:15-alpine
+        port: 5432
+        storage: 100Gi
+        storageClass: fast-ssd
+        resources:
+          limits:
+            cpu: "2000m"
+            memory: "4Gi"
+          requests:
+            cpu: "1000m"
+            memory: "2Gi"
+        config:
+          max_connections: 200
+          shared_buffers: 256MB
+          effective_cache_size: 1GB
+          maintenance_work_mem: 64MB
+          checkpoint_completion_target: 0.9
+          wal_buffers: 16MB
+          default_statistics_target: 100
+          
+      replicas:
+        count: 2
+        image: postgres:15-alpine
+        port: 5432
+        storage: 100Gi
+        lag_limit: 1MB
+        
+    backup:
+      enabled: true
+      schedule: "0 2 * * *"  # Daily at 2 AM
+      retention: 30d
+      storage:
+        type: s3
+        bucket: techsolutions-db-backups
+        region: us-west-1
+        encryption: true
+
+  # Cache configuration
+  cache:
+    redis:
+      cluster:
+        enabled: true
+        nodes: 3
+        replicas: 1
+        image: redis:7-alpine
+        port: 6379
+        storage: 10Gi
+        
+      config:
+        maxmemory: 1gb
+        maxmemory-policy: allkeys-lru
+        save: "900 1 300 10 60 10000"
+        appendonly: yes
+        appendfsync: everysec
+        
+  # Message queue
+  messaging:
+    kafka:
+      cluster:
+        brokers: 3
+        image: confluentinc/cp-kafka:7.4.0
+        port: 9092
+        storage: 50Gi
+        
+      topics:
+        - name: user-events
+          partitions: 12
+          replicas: 3
+          config:
+            retention.ms: 604800000  # 7 days
+            compression.type: snappy
+            
+        - name: system-notifications
+          partitions: 6
+          replicas: 3
+          config:
+            retention.ms: 259200000  # 3 days
+            
+        - name: audit-logs
+          partitions: 3
+          replicas: 3
+          config:
+            retention.ms: 2592000000  # 30 days
+            cleanup.policy: compact
+
+  # Monitoring stack
+  monitoring:
+    prometheus:
+      server:
+        image: prom/prometheus:v2.45.0
+        port: 9090
+        storage: 50Gi
+        retention: 15d
+        
+      alertmanager:
+        image: prom/alertmanager:v0.26.0
+        port: 9093
+        
+      node-exporter:
+        image: prom/node-exporter:v1.6.0
+        port: 9100
+        
+    grafana:
+      image: grafana/grafana:10.0.0
+      port: 3000
+      storage: 10Gi
+      admin:
+        user: admin
+        passwordSecret: grafana-admin-password
+        
+      dashboards:
+        - name: kubernetes-cluster
+          url: https://grafana.com/api/dashboards/7249/revisions/1/download
+        - name: application-metrics
+          url: https://grafana.com/api/dashboards/6417/revisions/1/download
+        - name: database-monitoring
+          url: https://grafana.com/api/dashboards/9628/revisions/7/download
+
+# Security configurations
+security:
+  networkPolicies:
+    enabled: true
+    policies:
+      - name: deny-all-ingress
+        spec:
+          podSelector: {}
+          policyTypes:
+            - Ingress
+            
+      - name: allow-frontend-to-backend
+        spec:
+          podSelector:
+            matchLabels:
+              tier: backend
+          ingress:
+            - from:
+                - podSelector:
+                    matchLabels:
+                      tier: frontend
+              ports:
+                - protocol: TCP
+                  port: 8080
+                  
+      - name: allow-backend-to-database
+        spec:
+          podSelector:
+            matchLabels:
+              tier: database
+          ingress:
+            - from:
+                - podSelector:
+                    matchLabels:
+                      tier: backend
+              ports:
+                - protocol: TCP
+                  port: 5432
+
+  podSecurityStandards:
+    enforce: restricted
+    audit: restricted
+    warn: restricted
+    
+  rbac:
+    enabled: true
+    serviceAccounts:
+      - name: web-app-sa
+        rules:
+          - apiGroups: [""]
+            resources: ["pods", "services"]
+            verbs: ["get", "list"]
+            
+      - name: api-service-sa
+        rules:
+          - apiGroups: [""]
+            resources: ["secrets", "configmaps"]
+            verbs: ["get", "list"]
+          - apiGroups: ["apps"]
+            resources: ["deployments"]
+            verbs: ["get", "list", "patch"]
+
+# Backup and disaster recovery
+backup:
+  schedule:
+    database:
+      frequency: daily
+      time: "02:00"
+      retention: 30d
+      
+    application-data:
+      frequency: hourly
+      retention: 7d
+      
+    configuration:
+      frequency: daily
+      time: "01:00"
+      retention: 90d
+      
+  storage:
+    primary:
+      type: s3
+      bucket: techsolutions-backups-primary
+      region: us-west-1
+      encryption: true
+      
+    secondary:
+      type: s3
+      bucket: techsolutions-backups-secondary
+      region: us-east-1
+      encryption: true
+
+# Multi-line string examples
+documentation: |
+  # Infrastructure Documentation
+  
+  This YAML configuration defines a comprehensive cloud infrastructure
+  setup for a multi-tier web application. It includes:
+  
+  ## Components
+  - Web application (React frontend)
+  - API service (Spring Boot backend)
+  - Worker service (Python background tasks)
+  - PostgreSQL database with read replicas
+  - Redis cluster for caching
+  - Kafka for message queuing
+  - Prometheus + Grafana for monitoring
+  
+  ## Environments
+  The configuration supports three environments:
+  - Development: Minimal resources, debug logging
+  - Staging: Production-like setup for testing
+  - Production: High availability, multi-AZ deployment
+  
+  ## Security
+  - Network policies for traffic isolation
+  - Pod security standards enforcement
+  - RBAC for service accounts
+  - Encrypted secrets management
+  
+  For more information, see the infrastructure documentation
+  at https://docs.techsolutions.com/infrastructure
+
+troubleshooting: >
+  Common troubleshooting steps:
+  
+  1. Check pod status: kubectl get pods -n production
+  2. View pod logs: kubectl logs -f <pod-name> -n production
+  3. Check service endpoints: kubectl get endpoints -n production
+  4. Verify ingress: kubectl describe ingress -n production
+  5. Monitor resources: kubectl top nodes && kubectl top pods -n production
+  
+  For database issues, check the primary and replica status,
+  review slow query logs, and verify connection pool metrics.
+
+# Complex nested structures with different data types
+configuration:
+  features:
+    - name: auto-scaling
+      enabled: true
+      config:
+        min_replicas: 2
+        max_replicas: 10
+        cpu_threshold: 70.0
+        memory_threshold: 80.0
+        scale_up_cooldown: 300
+        scale_down_cooldown: 600
+        
+    - name: blue-green-deployment
+      enabled: false
+      config:
+        traffic_split: 50
+        promotion_delay: 300
+        rollback_threshold: 0.1
+        
+    - name: canary-deployment
+      enabled: true
+      config:
+        initial_traffic: 5
+        increment_step: 10
+        promotion_delay: 600
+        success_threshold: 0.99
+        
+  integrations:
+    external_services:
+      auth_provider:
+        type: oauth2
+        endpoint: https://auth.techsolutions.com
+        scopes: [openid, profile, email]
+        
+      payment_gateway:
+        type: stripe
+        webhook_endpoint: /webhooks/stripe
+        supported_currencies: [USD, EUR, GBP]
+        
+      email_service:
+        type: sendgrid
+        templates:
+          welcome: d-1234567890abcdef
+          password_reset: d-fedcba0987654321
+          notification: d-1111222233334444
+
+# Data validation and constraints
+validation:
+  schemas:
+    user_data:
+      type: object
+      properties:
+        id:
+          type: string
+          pattern: "^[a-zA-Z0-9-]+$"
+        email:
+          type: string
+          format: email
+        age:
+          type: integer
+          minimum: 13
+          maximum: 120
+        roles:
+          type: array
+          items:
+            type: string
+            enum: [admin, user, guest]
+          minItems: 1
+          
+    api_response:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [success, error]
+        data:
+          type: object
+        timestamp:
+          type: string
+          format: date-time
+      required: [status, timestamp]
+
+# Test configurations
+testing:
+  unit_tests:
+    coverage_threshold: 80.0
+    frameworks:
+      - jest
+      - pytest
+      - junit
+      
+  integration_tests:
+    environments:
+      - staging
+      - development
+    databases:
+      - postgresql
+      - redis
+      
+  load_tests:
+    scenarios:
+      - name: normal_load
+        users: 100
+        duration: 300s
+        ramp_up: 60s
+        
+      - name: peak_load
+        users: 1000
+        duration: 600s
+        ramp_up: 120s
+        
+      - name: stress_test
+        users: 5000
+        duration: 900s
+        ramp_up: 300s
+
+# Deployment metadata
+deployment:
+  version: v2.1.0
+  timestamp: 2024-01-15T10:30:00Z
+  author: infrastructure-team
+  approved_by: john.smith@techsolutions.com
+  change_ticket: CHG-2024-001
+  rollback_plan: |
+    Rollback procedure:
+    1. Scale down new version to 0 replicas
+    2. Scale up previous version to original replica count
+    3. Update ingress to point to previous version
+    4. Verify application functionality
+    5. Clean up new version resources if rollback is permanent
+  
+  verification_steps:
+    - Health checks pass for all services
+    - Database migrations completed successfully
+    - External integrations working
+    - Monitoring alerts not triggered
+    - Load balancer health checks green
+    - SSL certificates valid and not expired
+
+# End of configuration 

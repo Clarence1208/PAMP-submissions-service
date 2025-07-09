@@ -1,0 +1,227 @@
+{
+  "meta": {
+    "version": "1.0.0",
+    "created": "2024-01-15T10:30:00Z",
+    "description": "Sample JSON data demonstrating various data types and structures"
+  },
+  "users": [
+    {
+      "id": 1,
+      "name": "Alice Johnson",
+      "age": 30,
+      "email": "alice@example.com",
+      "isActive": true,
+      "roles": ["user", "moderator"],
+      "profile": {
+        "avatar": "https://example.com/avatars/alice.jpg",
+        "bio": "Software developer with 8 years of experience",
+        "location": {
+          "city": "San Francisco",
+          "state": "CA",
+          "country": "USA",
+          "coordinates": {
+            "latitude": 37.7749,
+            "longitude": -122.4194
+          }
+        },
+        "preferences": {
+          "theme": "dark",
+          "notifications": {
+            "email": true,
+            "push": false,
+            "sms": true
+          },
+          "privacy": {
+            "showEmail": false,
+            "showLocation": true,
+            "allowMessages": true
+          }
+        }
+      },
+      "stats": {
+        "postsCount": 156,
+        "followersCount": 1248,
+        "followingCount": 892,
+        "joinDate": "2020-03-15T08:00:00Z",
+        "lastActiveDate": "2024-01-15T09:45:00Z"
+      }
+    },
+    {
+      "id": 2,
+      "name": "Bob Smith",
+      "age": 25,
+      "email": "bob@example.com",
+      "isActive": false,
+      "roles": ["user"],
+      "profile": {
+        "avatar": null,
+        "bio": "",
+        "location": {
+          "city": "New York",
+          "state": "NY",
+          "country": "USA",
+          "coordinates": {
+            "latitude": 40.7128,
+            "longitude": -74.0060
+          }
+        },
+        "preferences": {
+          "theme": "light",
+          "notifications": {
+            "email": false,
+            "push": true,
+            "sms": false
+          },
+          "privacy": {
+            "showEmail": true,
+            "showLocation": false,
+            "allowMessages": false
+          }
+        }
+      },
+      "stats": {
+        "postsCount": 23,
+        "followersCount": 45,
+        "followingCount": 167,
+        "joinDate": "2023-07-22T14:30:00Z",
+        "lastActiveDate": "2024-01-10T16:20:00Z"
+      }
+    }
+  ],
+  "posts": [
+    {
+      "id": 101,
+      "title": "Getting Started with JavaScript",
+      "content": "JavaScript is a versatile programming language...",
+      "authorId": 1,
+      "tags": ["javascript", "programming", "tutorial"],
+      "published": true,
+      "publishedDate": "2024-01-10T12:00:00Z",
+      "metrics": {
+        "views": 1523,
+        "likes": 89,
+        "comments": 12,
+        "shares": 5
+      },
+      "seo": {
+        "slug": "getting-started-with-javascript",
+        "metaDescription": "Learn the basics of JavaScript programming",
+        "keywords": ["javascript", "beginner", "tutorial", "programming"]
+      }
+    },
+    {
+      "id": 102,
+      "title": "Advanced CSS Techniques",
+      "content": "Explore modern CSS features and techniques...",
+      "authorId": 1,
+      "tags": ["css", "web-design", "frontend"],
+      "published": false,
+      "publishedDate": null,
+      "metrics": {
+        "views": 0,
+        "likes": 0,
+        "comments": 0,
+        "shares": 0
+      },
+      "seo": {
+        "slug": "advanced-css-techniques",
+        "metaDescription": "Master advanced CSS techniques for modern web development",
+        "keywords": ["css", "advanced", "web-design", "frontend"]
+      }
+    }
+  ],
+  "categories": [
+    {
+      "id": 1,
+      "name": "Programming",
+      "slug": "programming",
+      "description": "Articles about programming languages and techniques",
+      "parentId": null,
+      "subcategories": [
+        {
+          "id": 2,
+          "name": "JavaScript",
+          "slug": "javascript",
+          "description": "JavaScript programming tutorials and tips",
+          "parentId": 1
+        },
+        {
+          "id": 3,
+          "name": "Python",
+          "slug": "python",
+          "description": "Python programming tutorials and tips",
+          "parentId": 1
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "name": "Web Design",
+      "slug": "web-design",
+      "description": "Articles about web design and user experience",
+      "parentId": null,
+      "subcategories": []
+    }
+  ],
+  "config": {
+    "api": {
+      "version": "v1",
+      "baseUrl": "https://api.example.com",
+      "timeout": 30000,
+      "rateLimits": {
+        "requests": 1000,
+        "window": 3600,
+        "burst": 50
+      }
+    },
+    "features": {
+      "comments": true,
+      "likes": true,
+      "sharing": true,
+      "notifications": true,
+      "analytics": {
+        "enabled": true,
+        "provider": "google-analytics",
+        "trackingId": "GA-XXXXX-X"
+      }
+    },
+    "security": {
+      "cors": {
+        "enabled": true,
+        "origins": ["https://example.com", "https://app.example.com"]
+      },
+      "authentication": {
+        "required": true,
+        "providers": ["oauth", "email"],
+        "tokenExpiration": 86400
+      }
+    }
+  },
+  "supportedLanguages": [
+    "english",
+    "spanish",
+    "french",
+    "german",
+    "italian",
+    "portuguese",
+    "chinese",
+    "japanese"
+  ],
+  "contactInfo": {
+    "email": "contact@example.com",
+    "phone": "+1-555-123-4567",
+    "address": {
+      "street": "123 Main St",
+      "city": "Anytown",
+      "state": "CA",
+      "zipCode": "12345",
+      "country": "USA"
+    },
+    "socialMedia": {
+      "twitter": "@example",
+      "facebook": "example",
+      "linkedin": "company/example",
+      "github": "example"
+    }
+  }
+} 
