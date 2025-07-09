@@ -6,9 +6,16 @@ from sqlmodel import Session
 
 from app.domains.submissions.dto.create_submission_dto import CreateSubmissionDto
 from app.domains.submissions.dto.create_submission_response_dto import CreateSubmissionResponseDto
+from app.domains.submissions.dto.similarity_response_dto import (
+    SimilarityListResponseDto,
+    DetailedComparisonDto,
+    SimilarityStatisticsDto,
+    SimilarityAlertsResponseDto,
+)
 from app.domains.submissions.dto.submission_response_dto import SubmissionResponseDto
 from app.domains.submissions.dto.submission_update_dto import SubmissionUpdateDto
 from app.domains.submissions.submissions_service import SubmissionService
+from app.domains.submissions.submissions_similarity_repository import SubmissionSimilarityRepository
 from app.shared.database import get_session
 from app.shared.exceptions import DatabaseException, NotFoundException, ValidationException
 
@@ -169,8 +176,19 @@ async def update_submission(
 
 
 @router.delete("/{submission_id}", response_model=CreateSubmissionResponseDto)
-async def delete_submission(submission_id: UUID, service: SubmissionService = Depends(get_submission_service)):
+async def delete_submission(
+    submission_id: UUID, 
+    service: SubmissionService = Depends(get_submission_service),
+    session: Session = Depends(get_session)
+):
     """Delete a submission"""
+    # first check if a similarity exists for this submission if so, delete it first
+    try:
+        similarity_repository = SubmissionSimilarityRepository(session)
+        similarity_repository.delete_by_submission_id(submission_id)
+    except DatabaseException as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
     try:
         return service.delete_submission(submission_id)
     except NotFoundException as e:
@@ -359,6 +377,113 @@ async def get_available_rules(service: SubmissionService = Depends(get_submissio
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to get available rules: {str(e)}")
+
+
+@router.get("/{submission_id}/similarities", response_model=SimilarityListResponseDto)
+async def get_submission_similarities(
+    submission_id: UUID, 
+    service: SubmissionService = Depends(get_submission_service)
+):
+    """Get all similarity results for a specific submission"""
+    try:
+        similarities = service.get_submission_similarities(submission_id)
+        
+        # Count high similarity results (>= 0.7)
+        high_similarity_count = len([s for s in similarities if s.get("overall_similarity", 0) >= 0.7])
+        
+        return SimilarityListResponseDto(
+            submission_id=submission_id,
+            total_comparisons=len(similarities),
+            high_similarity_count=high_similarity_count,
+            similarities=similarities
+        )
+    except NotFoundException as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except DatabaseException as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/similarities/{similarity_id}/detailed", response_model=DetailedComparisonDto)
+async def get_detailed_comparison(
+    similarity_id: UUID,
+    service: SubmissionService = Depends(get_submission_service)
+):
+    """Get detailed comparison results including visualization data"""
+    try:
+        detailed_comparison = service.get_detailed_comparison(similarity_id)
+        return DetailedComparisonDto(**detailed_comparison)
+    except NotFoundException as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except ValidationException as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except DatabaseException as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/project/{project_uuid}/step/{project_step_uuid}/similarity-statistics", response_model=SimilarityStatisticsDto)
+async def get_project_step_similarity_statistics(
+    project_uuid: UUID,
+    project_step_uuid: UUID,
+    service: SubmissionService = Depends(get_submission_service)
+):
+    """Get similarity statistics for a project step"""
+    try:
+        statistics = service.get_project_step_statistics(project_uuid, project_step_uuid)
+        return SimilarityStatisticsDto(**statistics)
+    except DatabaseException as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/project/{project_uuid}/step/{project_step_uuid}/similarity-alerts", response_model=SimilarityAlertsResponseDto)
+async def get_high_similarity_alerts(
+    project_uuid: UUID,
+    project_step_uuid: UUID,
+    threshold: float = Query(0.7, ge=0.0, le=1.0, description="Similarity threshold for alerts"),
+    service: SubmissionService = Depends(get_submission_service)
+):
+    """Get high similarity alerts for a project step"""
+    try:
+        alerts = service.get_high_similarity_alerts(project_uuid, project_step_uuid, threshold)
+        
+        return SimilarityAlertsResponseDto(
+            project_uuid=project_uuid,
+            project_step_uuid=project_step_uuid,
+            similarity_threshold=threshold,
+            total_alerts=len(alerts),
+            alerts=alerts
+        )
+    except DatabaseException as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/project/{project_uuid}/step/{project_step_uuid}/similarity-overview")
+async def get_project_step_similarity_overview(
+    project_uuid: UUID,
+    project_step_uuid: UUID,
+    service: SubmissionService = Depends(get_submission_service)
+):
+    """Get comprehensive similarity overview for a project step"""
+    try:
+        statistics = service.get_project_step_statistics(project_uuid, project_step_uuid)
+        alerts = service.get_high_similarity_alerts(project_uuid, project_step_uuid, 0.7)
+        
+        return {
+            "project_uuid": project_uuid,
+            "project_step_uuid": project_step_uuid,
+            "statistics": statistics,
+            "high_similarity_alerts": {
+                "threshold": 0.7,
+                "total_alerts": len(alerts),
+                "alerts": alerts[:10]  # Limit to top 10 alerts
+            },
+            "recommendations": {
+                "review_required": len(alerts) > 0,
+                "investigation_priority": "high" if len(alerts) > 5 else "medium" if len(alerts) > 0 else "low",
+                "total_flagged_pairs": len(alerts)
+            }
+        }
+    except DatabaseException as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/health/check")

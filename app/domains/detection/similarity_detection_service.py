@@ -5,6 +5,7 @@ Handles code similarity analysis, comparison, and shared code block detection.
 
 import logging
 from typing import List, Dict, Any
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
@@ -52,7 +53,7 @@ class SimilarityDetectionService:
             'augmented_assignment', 'decorated_definition'
         }
 
-        # Types to normalize (replace content with generic placeholder)
+        # Types normalized to generic placeholders
         normalize_types = {
             'string': '<STRING>',
             'integer': '<NUMBER>',
@@ -63,7 +64,7 @@ class SimilarityDetectionService:
 
         # Types to completely filter out
         skip_types = {
-            'comment',  # Comments don't affect logic
+            'comment',
             'ERROR'  # Parsing errors
         }
 
@@ -74,7 +75,6 @@ class SimilarityDetectionService:
             if token_type in skip_types:
                 continue
 
-            # Keep structural types as-is
             if token_type in keep_types:
                 similarity_tokens.append({
                     'type': token_type,
@@ -92,7 +92,6 @@ class SimilarityDetectionService:
                 })
                 continue
 
-            # For other types, include them but mark for potential normalization
             similarity_tokens.append({
                 'type': token_type,
                 'text': token.get('text', ''),
@@ -108,7 +107,6 @@ class SimilarityDetectionService:
         """
         similarity_tokens = self.prepare_for_similarity(tokens)
 
-        # Create a compact signature by joining token types and normalized text
         signature_parts = []
         for token in similarity_tokens:
             if token['normalized']:
@@ -117,7 +115,7 @@ class SimilarityDetectionService:
             else:
                 # For structural tokens, use type + simplified text
                 token_text = token['text'].strip()
-                if len(token_text) > 20:  # Truncate very long text
+                if len(token_text) > 20:
                     token_text = token_text[:20] + "..."
                 signature_parts.append(f"{token['type']}:{token_text}")
 
@@ -136,7 +134,6 @@ class SimilarityDetectionService:
         signature1 = self.get_similarity_signature(tokens1)
         signature2 = self.get_similarity_signature(tokens2)
 
-        # Simple similarity metrics
         sig1_parts = signature1.split(' | ')
         sig2_parts = signature2.split(' | ')
 
@@ -169,46 +166,85 @@ class SimilarityDetectionService:
             }
         }
 
-    def detect_shared_code_blocks(self, tokens1: List[Dict[str, Any]], tokens2: List[Dict[str, Any]],
-                                  source1: str = "", source2: str = "",
-                                  file1_name: str = "", file2_name: str = "") -> Dict[str, Any]:
+    def detect_shared_code_blocks(self, 
+                                  source1: str, source2: str,
+                                  file1_name: str = "", file2_name: str = "",
+                                  file1_path: Path = None, file2_path: Path = None,
+                                  tokenization_service=None) -> Dict[str, Any]:
         """
-        Detect shared code blocks between two sets of tokens.
+        Detect shared code blocks between two source files using Tree-sitter queries.
         
         Args:
-            tokens1: First set of tokens
-            tokens2: Second set of tokens  
-            source1: Original source code of first file (optional, for extracting code blocks)
-            source2: Original source code of second file (optional, for extracting code blocks)
-            file1_name: Name of the first file (optional, for better reporting)
-            file2_name: Name of the second file (optional, for better reporting)
+            source1: Original source code of first file
+            source2: Original source code of second file
+            file1_name: Name of the first file (for reporting)
+            file2_name: Name of the second file (for reporting)
+            file1_path: Path object for first file (for language detection)
+            file2_path: Path object for second file (for language detection)
+            tokenization_service: Instance of TokenizationService for function extraction
         """
-        # Extract function definitions from both files
-        functions1 = self._extract_functions_with_positions(tokens1, source1)
-        functions2 = self._extract_functions_with_positions(tokens2, source2)
+        if not tokenization_service:
+            logger.warning("No tokenization service provided, cannot extract functions")
+            return {
+                'shared_blocks': [],
+                'total_shared_blocks': 0,
+                'average_similarity': 0.0,
+                'functions_file1': 0,
+                'functions_file2': 0,
+                'shared_percentage': 0.0
+            }
 
+        # Extract functions from both files using the improved tokenization service
+        functions1 = tokenization_service.extract_functions_with_positions(source1, file1_path)
+        functions2 = tokenization_service.extract_functions_with_positions(source2, file2_path)
+        
+        logger.info(f"Extracted {len(functions1)} functions from {file1_name}")
+        logger.info(f"Extracted {len(functions2)} functions from {file2_name}")
+
+        # Step 3: Fast comparison using pre-computed data
         shared_blocks = []
         similarity_scores = []
 
-        for func1_name, func1_data in functions1.items():
-            for func2_name, func2_data in functions2.items():
-                # Compare function signatures and body
-                func_similarity = self._compare_function_similarity(func1_data['tokens'], func2_data['tokens'])
+        # Compare all function pairs
+        for func1_id, func1_data in functions1.items():
+            for func2_id, func2_data in functions2.items():
+                # Skip comparison for functions with less than 5 lines (too trivial for meaningful comparison)
+                func1_line_count = func1_data['end_line'] - func1_data['start_line'] + 1
+                func2_line_count = func2_data['end_line'] - func2_data['start_line'] + 1
+                
+                if func1_line_count < 5 or func2_line_count < 5:
+                    logger.debug(f"Skipping comparison of short functions: {func1_data['function_name']} ({func1_line_count} lines) vs {func2_data['function_name']} ({func2_line_count} lines)")
+                    continue
+                
+                # Get tokens for both functions by tokenizing their code blocks
+                func1_tokens = tokenization_service.tokenize(func1_data['code_block'], file1_path)
+                func2_tokens = tokenization_service.tokenize(func2_data['code_block'], file2_path)
 
-                if func_similarity['similarity_score'] > 0.8:
+                # Compare function similarity
+                func_similarity = self._compare_function_similarity(func1_tokens, func2_tokens)
+
+                logger.debug(
+                    f"Comparing {func1_data['function_name']} with {func2_data['function_name']}: {func_similarity['similarity_score']:.2f}")
+
+                if func_similarity['similarity_score'] > 0.7:
+
                     shared_block = {
-                        'file1_function': func1_name,
-                        'file2_function': func2_name,
+                        'file1_function': func1_data['function_name'],
+                        'file2_function': func2_data['function_name'],
                         'file1_filename': file1_name,
                         'file2_filename': file2_name,
                         'similarity_score': func_similarity['similarity_score'],
                         'common_patterns': func_similarity['common_patterns'],
-                        'file1_code_block': func1_data.get('code_block', ''),
-                        'file2_code_block': func2_data.get('code_block', ''),
-                        'file1_start_line': func1_data.get('start_line', 0),
-                        'file1_end_line': func1_data.get('end_line', 0),
-                        'file2_start_line': func2_data.get('start_line', 0),
-                        'file2_end_line': func2_data.get('end_line', 0)
+                        'file1_code_block': func1_data['code_block'],
+                        'file2_code_block': func2_data['code_block'],
+                        'file1_start_line': func1_data['start_line'],
+                        'file1_end_line': func1_data['end_line'],
+                        'file2_start_line': func2_data['start_line'],
+                        'file2_end_line': func2_data['end_line'],
+                        'file1_language': func1_data.get('language', 'unknown'),
+                        'file2_language': func2_data.get('language', 'unknown'),
+                        'file1_node_type': func1_data.get('node_type', 'unknown'),
+                        'file2_node_type': func2_data.get('node_type', 'unknown')
                     }
                     shared_blocks.append(shared_block)
                     similarity_scores.append(func_similarity['similarity_score'])
@@ -223,138 +259,6 @@ class SimilarityDetectionService:
                                                           len(functions2)) * 100 if functions1 or functions2 else 0.0
         }
 
-    def _extract_functions_with_positions(self, tokens: List[Dict[str, Any]], source_code: str = "") -> Dict[str, Dict]:
-        """Extract function definitions with their tokens, positions, and actual code blocks."""
-        functions = {}
-        current_function = None
-        current_function_tokens = []
-        current_function_name = None
-        function_start_line = 0
-        function_end_line = 0
-        function_depth = 0
-
-        source_lines = source_code.split('\n') if source_code else []
-
-        for token in tokens:
-            token_type = token.get('type', '')
-
-            # Start of a new function
-            if token_type == 'function_definition':
-                # Save previous function if exists
-                if current_function and current_function_tokens:
-                    end_line = function_end_line if function_end_line > 0 else function_start_line + 10
-                    code_block = self._extract_code_block(source_lines, function_start_line, end_line)
-
-                    functions[current_function] = {
-                        'tokens': current_function_tokens,
-                        'code_block': code_block,
-                        'start_line': function_start_line,
-                        'end_line': end_line,
-                        'function_name': current_function_name
-                    }
-
-                # Start new function
-                current_function_tokens = [token]
-                function_depth = 1
-                # Ensure line numbers are integers
-                function_start_line = int(token.get('start', 0)) if token.get('start') is not None else 0
-                function_end_line = int(token.get('end', 0)) if token.get('end') is not None else 0
-
-                # Try to extract function name from the token text or find it in next tokens
-                current_function_name = self._extract_function_name(token, tokens)
-                current_function = f"function_{len(functions)}_{current_function_name}" if current_function_name else f"function_{len(functions)}"
-
-            # Inside a function
-            elif current_function and function_depth > 0:
-                current_function_tokens.append(token)
-                # Ensure end position is an integer before comparison
-                token_end = int(token.get('end', function_end_line)) if token.get(
-                    'end') is not None else function_end_line
-                function_end_line = max(function_end_line, token_end)
-
-                # Track nesting depth (simplified)
-                if token_type in ['function_definition', 'class_definition']:
-                    function_depth += 1
-                elif token_type in ['return_statement'] and function_depth == 1:
-                    # End of current function (simplified detection)
-                    token_end = int(token.get('end', function_end_line)) if token.get(
-                        'end') is not None else function_end_line
-                    end_line = max(function_end_line, token_end)
-                    code_block = self._extract_code_block(source_lines, function_start_line, end_line + 1)
-
-                    functions[current_function] = {
-                        'tokens': current_function_tokens,
-                        'code_block': code_block,
-                        'start_line': function_start_line,
-                        'end_line': end_line,
-                        'function_name': current_function_name
-                    }
-                    current_function = None
-                    current_function_tokens = []
-                    function_depth = 0
-
-        # Handle last function
-        if current_function and current_function_tokens:
-            end_line = function_end_line if function_end_line > 0 else function_start_line + 10
-            code_block = self._extract_code_block(source_lines, function_start_line, end_line + 1)
-
-            functions[current_function] = {
-                'tokens': current_function_tokens,
-                'code_block': code_block,
-                'start_line': function_start_line,
-                'end_line': end_line,
-                'function_name': current_function_name
-            }
-
-        return functions
-
-    def _extract_function_name(self, function_token: Dict[str, Any], all_tokens: List[Dict[str, Any]]) -> str:
-        """Extract function name from function definition token or surrounding tokens."""
-        # Try to extract from the function token text first
-        func_text = function_token.get('text', '')
-        if 'def ' in func_text:
-            # Simple regex-like extraction
-            try:
-                lines = func_text.split('\n')
-                for line in lines:
-                    if 'def ' in line:
-                        # Extract function name between 'def ' and '('
-                        def_start = line.find('def ') + 4
-                        paren_pos = line.find('(', def_start)
-                        if paren_pos > def_start:
-                            func_name = line[def_start:paren_pos].strip()
-                            if func_name and func_name.isidentifier():
-                                return func_name
-            except:
-                pass
-
-        return "unknown_function"
-
-    def _extract_code_block(self, source_lines: List[str], start_line: int, end_line: int) -> str:
-        """Extract code block from source lines between start and end line numbers."""
-        if not source_lines:
-            return ""
-
-        # Ensure line numbers are integers and handle None values
-        try:
-            start_line = int(start_line) if start_line is not None else 0
-            end_line = int(end_line) if end_line is not None else 0
-        except (ValueError, TypeError):
-            return ""
-
-        if start_line < 0:
-            return ""
-
-        # Adjust for 0-based indexing and bounds
-        start_idx = max(0, start_line)
-        end_idx = min(len(source_lines), end_line)
-
-        if start_idx >= end_idx:
-            return ""
-
-        code_lines = source_lines[start_idx:end_idx]
-        return '\n'.join(code_lines)
-
     def _compare_function_similarity(self, func1_tokens: List[Dict[str, Any]], func2_tokens: List[Dict[str, Any]]) -> \
             Dict[str, Any]:
         """Compare similarity between two function token sequences using improved algorithm."""
@@ -362,38 +266,33 @@ class SimilarityDetectionService:
         sim_tokens1 = self.prepare_for_similarity(func1_tokens)
         sim_tokens2 = self.prepare_for_similarity(func2_tokens)
 
-        # 1. STRUCTURAL SEQUENCE SIMILARITY (most important)
-        # Create normalized sequences focusing on control flow and operations
+        #  STRUCTURAL SEQUENCE SIMILARITY (most important)
         seq1 = self._create_structural_sequence(sim_tokens1)
         seq2 = self._create_structural_sequence(sim_tokens2)
 
         structural_similarity = self._sequence_similarity(seq1, seq2)
 
-        # 2. TOKEN TYPE PATTERN SIMILARITY
+        #  TOKEN TYPE PATTERN SIMILARITY
         types1 = [token['type'] for token in sim_tokens1]
         types2 = [token['type'] for token in sim_tokens2]
 
-        # Use sequence similarity instead of just set intersection
         type_sequence_similarity = self._sequence_similarity(types1, types2)
 
-        # Also check set-based type similarity (for different order but same operations)
+        # Also check set-based type similarity, for different order but same operations
         common_types = set(types1) & set(types2)
         total_types = set(types1) | set(types2)
         type_set_similarity = len(common_types) / len(total_types) if total_types else 0.0
 
-        # 3. LOGICAL FLOW SIMILARITY
-        # Extract logical patterns (if-else, loops, returns, etc.)
+        #  LOGICAL FLOW SIMILARITY (if-else, loops, returns)
         flow1 = self._extract_logical_flow(sim_tokens1)
         flow2 = self._extract_logical_flow(sim_tokens2)
         flow_similarity = self._sequence_similarity(flow1, flow2)
 
-        # 4. OPERATION SIMILARITY  
-        # Extract mathematical/logical operations
+        #  OPERATION SIMILARITY
         ops1 = self._extract_operations(sim_tokens1)
         ops2 = self._extract_operations(sim_tokens2)
         operation_similarity = self._sequence_similarity(ops1, ops2)
 
-        # WEIGHTED COMBINATION (emphasizing structure over text)
         # Add penalty for very different function lengths
         len1, len2 = len(sim_tokens1), len(sim_tokens2)
         length_ratio = min(len1, len2) / max(len1, len2) if max(len1, len2) > 0 else 0.0
@@ -451,25 +350,42 @@ class SimilarityDetectionService:
 
         return sequence
 
+    # fixme it should use dynamic queries
     def _extract_logical_flow(self, tokens: List[Dict[str, Any]]) -> List[str]:
-        """Extract logical flow patterns from tokens."""
+        """Extract logical flow patterns from tokens (multi-language support)."""
         flow = []
         for token in tokens:
             token_type = token.get('type', '')
+            # Python patterns
             if token_type in ['if_statement', 'elif_clause', 'else_clause',
                               'for_statement', 'while_statement', 'break_statement',
                               'continue_statement', 'return_statement', 'try_statement',
                               'except_clause', 'finally_clause']:
                 flow.append(token_type)
+            # Java patterns
+            elif token_type in ['if_statement', 'for_statement', 'while_statement', 
+                               'do_statement', 'switch_statement', 'case_statement',
+                               'break_statement', 'continue_statement', 'return_statement',
+                               'try_statement', 'catch_clause', 'finally_clause',
+                               'throw_statement']:
+                flow.append(token_type)
+            # JavaScript patterns  
+            elif token_type in ['if_statement', 'for_statement', 'while_statement',
+                               'for_in_statement', 'for_of_statement', 'do_statement',
+                               'switch_statement', 'case_statement', 'break_statement',
+                               'continue_statement', 'return_statement', 'try_statement',
+                               'catch_clause', 'finally_clause', 'throw_statement']:
+                flow.append(token_type)
         return flow
 
     def _extract_operations(self, tokens: List[Dict[str, Any]]) -> List[str]:
-        """Extract mathematical and logical operations from tokens."""
+        """Extract mathematical and logical operations from tokens (multi-language support)."""
         operations = []
         for token in tokens:
             token_type = token.get('type', '')
             token_text = token.get('text', '').strip()
 
+            # Python/JavaScript patterns
             if token_type in ['binary_operator', 'unary_operator', 'comparison_operator',
                               'boolean_operator', 'augmented_assignment']:
                 # Normalize common operations
@@ -481,29 +397,47 @@ class SimilarityDetectionService:
                     operations.append('LOGIC_OP')
                 else:
                     operations.append('OPERATOR')
+            # Java patterns  
+            elif token_type in ['binary_expression', 'unary_expression', 'assignment_expression',
+                               'update_expression', 'conditional_expression']:
+                if token_text in ['+', '-', '*', '/', '%']:
+                    operations.append('MATH_OP')
+                elif token_text in ['==', '!=', '<', '>', '<=', '>=']:
+                    operations.append('COMPARE_OP')
+                elif token_text in ['&&', '||', '!']:
+                    operations.append('LOGIC_OP')
+                else:
+                    operations.append('OPERATOR')
+            # Method calls and assignments (common across languages)
+            elif token_type in ['method_invocation', 'call', 'assignment']:
+                operations.append('METHOD_CALL')
         return operations
 
     def _sequence_similarity(self, seq1: List[str], seq2: List[str]) -> float:
         """Calculate similarity between two sequences using longest common subsequence."""
+        # If both sequences are empty, they are identical
+        if not seq1 and not seq2:
+            return 1.0
+        # If only one sequence is empty, they are completely different  
         if not seq1 or not seq2:
             return 0.0
 
-        # Use dynamic programming to find longest common subsequence
         m, n = len(seq1), len(seq2)
-        dp = [[0] * (n + 1) for _ in range(m + 1)]
+        lcs_matrix = [[0] * (n + 1) for _ in range(m + 1)]
 
         for i in range(1, m + 1):
             for j in range(1, n + 1):
                 if seq1[i - 1] == seq2[j - 1]:
-                    dp[i][j] = dp[i - 1][j - 1] + 1
+                    lcs_matrix[i][j] = lcs_matrix[i - 1][j - 1] + 1
                 else:
-                    dp[i][j] = max(dp[i - 1][j], dp[i][j - 1])
+                    lcs_matrix[i][j] = max(lcs_matrix[i - 1][j], lcs_matrix[i][j - 1])
 
-        lcs_length = dp[m][n]
+        lcs_length = lcs_matrix[m][n]
         max_length = max(m, n)
 
-        # Calculate similarity as LCS ratio with bonus for exact matches
+        # If both sequences are identical and of the same length, return 1.0 (100% similarity)
         if m == n and lcs_length == m:
-            return 1.0  # Perfect match
+            return 1.0
 
         return lcs_length / max_length
+

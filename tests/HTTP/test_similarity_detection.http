@@ -1,0 +1,152 @@
+# Similarity Detection API Tests
+# Use these HTTP requests to test your plagiarism detection endpoints
+
+### Step 1: Create first submission for testing similarity detection
+POST http://127.0.0.1:3002/submissions/
+Content-Type: application/json
+
+{
+  "link": "https://github.com/test-user/python-calculator",
+  "project_uuid": "123e4567-e89b-12d3-a456-426614174000",
+  "group_uuid": "987fcdeb-51a2-43d1-9f12-345678901234",
+  "project_step_uuid": "111e1111-1111-1111-1111-111111111111",
+  "description": "Calculator project submission - Student A",
+  "submitted_by_uuid": "aaa1a111-1111-1111-1111-111111111111"
+}
+
+### Step 2: Create second submission to trigger similarity detection
+POST http://127.0.0.1:3002/submissions/
+Content-Type: application/json
+
+{
+  "link": "https://github.com/test-user/python-game-engine",
+  "project_uuid": "123e4567-e89b-12d3-a456-426614174000",
+  "group_uuid": "987fcdeb-51a2-43d1-9f12-345678901234", 
+  "project_step_uuid": "111e1111-1111-1111-1111-111111111111",
+  "description": "Game engine project submission - Student B",
+  "submitted_by_uuid": "bbb2b222-2222-2222-2222-222222222222"
+}
+
+### Step 3: Create third submission for more comparison data
+POST http://127.0.0.1:3002/submissions/
+Content-Type: application/json
+
+{
+  "link": "https://github.com/test-user/web-scraper",
+  "project_uuid": "123e4567-e89b-12d3-a456-426614174000",
+  "group_uuid": "987fcdeb-51a2-43d1-9f12-345678901234",
+  "project_step_uuid": "111e1111-1111-1111-1111-111111111111", 
+  "description": "Web scraper project submission - Student C",
+  "submitted_by_uuid": "ccc3c333-3333-3333-3333-333333333333"
+}
+
+### ===== SIMILARITY DETECTION TESTS =====
+
+### Get all similarity results for a submission (replace with actual submission ID)
+GET http://127.0.0.1:3002/submissions/{{submission_id}}/similarities
+Accept: application/json
+
+### Get detailed comparison with visualization data (replace with actual similarity ID)
+GET http://127.0.0.1:3002/submissions/similarities/{{similarity_id}}/detailed
+Accept: application/json
+
+### Get similarity statistics for a project step
+GET http://127.0.0.1:3002/submissions/project/123e4567-e89b-12d3-a456-426614174000/step/111e1111-1111-1111-1111-111111111111/similarity-statistics
+Accept: application/json
+
+### Get high similarity alerts (default threshold 0.7)
+GET http://127.0.0.1:3002/submissions/project/123e4567-e89b-12d3-a456-426614174000/step/111e1111-1111-1111-1111-111111111111/similarity-alerts
+Accept: application/json
+
+### Get high similarity alerts with custom threshold
+GET http://127.0.0.1:3002/submissions/project/123e4567-e89b-12d3-a456-426614174000/step/111e1111-1111-1111-1111-111111111111/similarity-alerts?threshold=0.5
+Accept: application/json
+
+### Get comprehensive similarity overview for a project step
+GET http://127.0.0.1:3002/submissions/project/123e4567-e89b-12d3-a456-426614174000/step/111e1111-1111-1111-1111-111111111111/similarity-overview
+Accept: application/json
+
+### ===== TEST WITH REAL TEST DATA =====
+
+### Create submission using test calculator project (should work with existing test data)
+POST http://127.0.0.1:3002/submissions/
+Content-Type: application/json
+
+{
+  "link": "file://resources/test/project_calculator",
+  "project_uuid": "550e8400-e29b-41d4-a716-446655440000",
+  "group_uuid": "550e8400-e29b-41d4-a716-446655440001",
+  "project_step_uuid": "550e8400-e29b-41d4-a716-446655440002",
+  "description": "Test calculator project for similarity detection",
+  "submitted_by_uuid": "550e8400-e29b-41d4-a716-446655440005"
+}
+
+### Create submission using test game project (should trigger similarity comparison)
+POST http://127.0.0.1:3002/submissions/
+Content-Type: application/json
+
+{
+  "link": "file://resources/test/project_game",
+  "project_uuid": "550e8400-e29b-41d4-a716-446655440000",
+  "group_uuid": "550e8400-e29b-41d4-a716-446655440001",
+  "project_step_uuid": "550e8400-e29b-41d4-a716-446655440002",
+  "description": "Test game project for similarity detection",
+  "submitted_by_uuid": "550e8400-e29b-41d4-a716-446655440006"
+}
+
+### ===== HEALTH AND STATUS CHECKS =====
+
+### Check submissions health (should include similarity detection status)
+GET http://127.0.0.1:3002/submissions/health/check
+Accept: application/json
+
+### Test detection endpoints health
+GET http://127.0.0.1:3002/detection/similarity-test/simple
+Accept: application/json
+
+### ===== EXAMPLE WORKFLOWS =====
+
+### Workflow 1: Create submission and immediately check similarities
+# 1. Create submission
+POST http://127.0.0.1:3002/submissions/
+Content-Type: application/json
+
+{
+  "link": "https://github.com/student/assignment-solution",
+  "project_uuid": "workflow-test-proj-uuid",
+  "group_uuid": "workflow-test-group-uuid",
+  "project_step_uuid": "workflow-test-step-uuid",
+  "description": "Assignment solution for testing workflow",
+  "submitted_by_uuid": "workflow-test-user-uuid"
+}
+
+# 2. Wait a moment for processing, then check similarities
+# GET http://127.0.0.1:3002/submissions/{{submission_id_from_step_1}}/similarities
+
+### Workflow 2: Monitor project step for plagiarism
+# 1. Get overview
+# GET http://127.0.0.1:3002/submissions/project/{{project_uuid}}/step/{{step_uuid}}/similarity-overview
+
+# 2. Get detailed alerts if needed  
+# GET http://127.0.0.1:3002/submissions/project/{{project_uuid}}/step/{{step_uuid}}/similarity-alerts?threshold=0.8
+
+# 3. Investigate specific similarity
+# GET http://127.0.0.1:3002/submissions/similarities/{{similarity_id}}/detailed
+
+### ===== ERROR TESTING =====
+
+### Test with invalid submission ID
+GET http://127.0.0.1:3002/submissions/invalid-uuid/similarities
+Accept: application/json
+
+### Test with invalid similarity ID
+GET http://127.0.0.1:3002/submissions/similarities/invalid-uuid/detailed
+Accept: application/json
+
+### Test with invalid threshold (should fail validation)
+GET http://127.0.0.1:3002/submissions/project/123e4567-e89b-12d3-a456-426614174000/step/111e1111-1111-1111-1111-111111111111/similarity-alerts?threshold=1.5
+Accept: application/json
+
+### Test with negative threshold (should fail validation)
+GET http://127.0.0.1:3002/submissions/project/123e4567-e89b-12d3-a456-426614174000/step/111e1111-1111-1111-1111-111111111111/similarity-alerts?threshold=-0.1
+Accept: application/json 

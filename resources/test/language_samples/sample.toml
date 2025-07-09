@@ -1,0 +1,625 @@
+# TOML Sample Configuration File
+# This file demonstrates various TOML (Tom's Obvious, Minimal Language) features including:
+# - Basic key-value pairs with different data types
+# - Tables and nested tables
+# - Arrays and array of tables
+# - Inline tables
+# - String types (basic, multi-line, literal, multi-line literal)
+# - Numbers (integers, floats, special values)
+# - Booleans and dates
+# - Comments and organization
+
+# =============================================================================
+# APPLICATION CONFIGURATION
+# =============================================================================
+
+# Application metadata
+name = "Sample Application"
+version = "1.2.3"
+description = """
+A comprehensive sample application demonstrating various 
+configuration options using TOML format.
+"""
+author = "Development Team"
+license = "MIT"
+homepage = "https://example.com"
+repository = "https://github.com/example/sample-app"
+
+# Environment settings
+environment = "production"
+debug = false
+log_level = "info"
+maintenance_mode = false
+
+# Build information
+build_number = 12345
+build_date = 2024-01-15T10:30:00Z
+commit_hash = "a1b2c3d4e5f6"
+
+# =============================================================================
+# SERVER CONFIGURATION
+# =============================================================================
+
+[server]
+host = "0.0.0.0"
+port = 8080
+ssl_enabled = true
+ssl_port = 8443
+worker_processes = 4
+max_connections = 1000
+timeout = 30
+keep_alive = true
+
+# Server SSL configuration
+[server.ssl]
+certificate_path = "/etc/ssl/certs/server.crt"
+private_key_path = "/etc/ssl/private/server.key"
+ca_certificate_path = "/etc/ssl/certs/ca.crt"
+protocols = ["TLSv1.2", "TLSv1.3"]
+ciphers = [
+    "ECDHE-RSA-AES256-GCM-SHA384",
+    "ECDHE-RSA-AES128-GCM-SHA256",
+    "ECDHE-RSA-AES256-SHA384"
+]
+
+# Server logging configuration
+[server.logging]
+access_log = "/var/log/app/access.log"
+error_log = "/var/log/app/error.log"
+log_format = "combined"
+log_rotation = "daily"
+max_log_size = "100MB"
+retain_days = 30
+
+# =============================================================================
+# DATABASE CONFIGURATION
+# =============================================================================
+
+[database]
+driver = "postgresql"
+host = "localhost"
+port = 5432
+name = "sample_app_db"
+username = "app_user"
+password = "secure_password_123"
+ssl_mode = "require"
+connection_pool_size = 20
+max_idle_connections = 5
+connection_timeout = 10
+query_timeout = 30
+
+# Database connection string (alternative format)
+# connection_string = "postgresql://app_user:secure_password_123@localhost:5432/sample_app_db?sslmode=require"
+
+# Read replica configuration
+[database.replica]
+host = "replica.localhost"
+port = 5432
+enabled = true
+lag_threshold = 1000  # milliseconds
+
+# Database migrations
+[database.migrations]
+auto_migrate = false
+migrations_path = "./migrations"
+version_table = "schema_migrations"
+
+# =============================================================================
+# REDIS CONFIGURATION
+# =============================================================================
+
+[redis]
+host = "localhost"
+port = 6379
+password = ""
+database = 0
+connection_pool_size = 10
+timeout = 5
+retry_attempts = 3
+
+# Redis Sentinel configuration for high availability
+[redis.sentinel]
+enabled = false
+master_name = "mymaster"
+sentinels = [
+    { host = "sentinel1.example.com", port = 26379 },
+    { host = "sentinel2.example.com", port = 26379 },
+    { host = "sentinel3.example.com", port = 26379 }
+]
+
+# =============================================================================
+# AUTHENTICATION & SECURITY
+# =============================================================================
+
+[auth]
+provider = "oauth2"
+session_timeout = 3600  # seconds
+remember_me_duration = 2592000  # 30 days in seconds
+max_login_attempts = 5
+lockout_duration = 900  # 15 minutes
+require_email_verification = true
+password_reset_expiry = 3600
+
+# JWT configuration
+[auth.jwt]
+secret_key = "your-super-secret-jwt-key-here"
+algorithm = "HS256"
+access_token_expiry = 900   # 15 minutes
+refresh_token_expiry = 604800  # 7 days
+issuer = "sample-app"
+audience = "sample-app-users"
+
+# OAuth2 providers
+[auth.oauth2.google]
+client_id = "google-client-id"
+client_secret = "google-client-secret"
+redirect_uri = "https://example.com/auth/google/callback"
+scopes = ["openid", "email", "profile"]
+
+[auth.oauth2.github]
+client_id = "github-client-id"
+client_secret = "github-client-secret"
+redirect_uri = "https://example.com/auth/github/callback"
+scopes = ["user:email"]
+
+# Password policy
+[auth.password_policy]
+min_length = 8
+max_length = 128
+require_uppercase = true
+require_lowercase = true
+require_numbers = true
+require_special_chars = true
+forbidden_patterns = [
+    "password",
+    "123456",
+    "qwerty",
+    "admin"
+]
+
+# =============================================================================
+# EMAIL CONFIGURATION
+# =============================================================================
+
+[email]
+provider = "smtp"
+from_address = "noreply@example.com"
+from_name = "Sample Application"
+reply_to = "support@example.com"
+
+[email.smtp]
+host = "smtp.gmail.com"
+port = 587
+username = "smtp-username"
+password = "smtp-password"
+encryption = "tls"
+auth_required = true
+
+# Email templates
+[email.templates]
+welcome = "emails/welcome.html"
+password_reset = "emails/password_reset.html"
+email_verification = "emails/email_verification.html"
+notification = "emails/notification.html"
+
+# =============================================================================
+# FILE STORAGE CONFIGURATION
+# =============================================================================
+
+[storage]
+default_driver = "s3"
+public_url = "https://cdn.example.com"
+
+# Local storage driver
+[storage.drivers.local]
+root_path = "/var/www/storage"
+public_path = "/public"
+permissions = 0755
+
+# Amazon S3 storage driver
+[storage.drivers.s3]
+bucket = "sample-app-storage"
+region = "us-east-1"
+access_key = "AWS_ACCESS_KEY"
+secret_key = "AWS_SECRET_KEY"
+endpoint = ""  # Leave empty for AWS S3
+path_style = false
+encryption = "AES256"
+
+# File upload limits
+[storage.upload_limits]
+max_file_size = "10MB"
+allowed_types = [
+    "image/jpeg",
+    "image/png",
+    "image/gif",
+    "application/pdf",
+    "text/plain"
+]
+max_files_per_request = 5
+
+# =============================================================================
+# CACHING CONFIGURATION
+# =============================================================================
+
+[cache]
+default_driver = "redis"
+default_ttl = 3600  # 1 hour in seconds
+prefix = "sample_app"
+
+# Memory cache driver
+[cache.drivers.memory]
+max_size = "128MB"
+cleanup_interval = 600  # 10 minutes
+
+# File cache driver
+[cache.drivers.file]
+path = "/tmp/cache"
+cleanup_probability = 0.1
+
+# Cache tags and groups
+[cache.tags]
+user_data = ["users", "profiles", "sessions"]
+application_data = ["settings", "configurations", "metadata"]
+temporary_data = ["csrf_tokens", "rate_limits"]
+
+# =============================================================================
+# LOGGING CONFIGURATION
+# =============================================================================
+
+[logging]
+default_channel = "app"
+timezone = "UTC"
+
+# Console logging channel
+[logging.channels.console]
+driver = "console"
+level = "debug"
+format = "[%datetime%] %channel%.%level_name%: %message% %context% %extra%\n"
+date_format = "Y-m-d H:i:s"
+
+# File logging channel
+[logging.channels.file]
+driver = "file"
+path = "/var/log/app/application.log"
+level = "info"
+max_files = 30
+format = "[%datetime%] %channel%.%level_name%: %message% %context% %extra%\n"
+
+# Syslog channel
+[logging.channels.syslog]
+driver = "syslog"
+facility = "local0"
+level = "warning"
+
+# =============================================================================
+# MONITORING & METRICS
+# =============================================================================
+
+[monitoring]
+enabled = true
+metrics_endpoint = "/metrics"
+health_check_endpoint = "/health"
+
+# Prometheus metrics
+[monitoring.prometheus]
+enabled = true
+namespace = "sample_app"
+subsystem = "web"
+metrics_path = "/metrics"
+
+# Application metrics to collect
+[monitoring.metrics]
+response_time = true
+request_count = true
+error_rate = true
+database_connections = true
+memory_usage = true
+cpu_usage = true
+
+# Health checks
+[monitoring.health_checks]
+database = { timeout = 5, critical = true }
+redis = { timeout = 3, critical = false }
+external_api = { timeout = 10, critical = false, url = "https://api.example.com/health" }
+
+# =============================================================================
+# FEATURE FLAGS
+# =============================================================================
+
+[features]
+new_user_interface = false
+beta_features = true
+advanced_analytics = true
+social_login = true
+two_factor_auth = false
+dark_mode = true
+real_time_notifications = true
+
+# Feature rollout percentages
+[features.rollout]
+new_dashboard = 25.0  # 25% of users
+experimental_feature = 5.0   # 5% of users
+premium_features = 100.0     # 100% of premium users
+
+# =============================================================================
+# API CONFIGURATION
+# =============================================================================
+
+[api]
+version = "v1"
+base_path = "/api/v1"
+rate_limit_enabled = true
+cors_enabled = true
+documentation_enabled = true
+
+# API rate limiting
+[api.rate_limiting]
+default_limit = 1000  # requests per hour
+authenticated_limit = 5000
+premium_limit = 10000
+burst_limit = 100  # requests per minute
+
+# CORS configuration
+[api.cors]
+allowed_origins = [
+    "https://example.com",
+    "https://app.example.com",
+    "http://localhost:3000"
+]
+allowed_methods = ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+allowed_headers = [
+    "Accept",
+    "Authorization",
+    "Content-Type",
+    "X-Requested-With"
+]
+exposed_headers = ["X-Total-Count", "X-Page-Count"]
+allow_credentials = true
+max_age = 86400  # 24 hours
+
+# API documentation
+[api.documentation]
+title = "Sample Application API"
+description = "RESTful API for the sample application"
+contact_email = "api-support@example.com"
+license = "MIT"
+version = "1.0.0"
+
+# =============================================================================
+# THIRD-PARTY INTEGRATIONS
+# =============================================================================
+
+# Stripe payment processing
+[integrations.stripe]
+public_key = "pk_test_..."
+secret_key = "sk_test_..."
+webhook_secret = "whsec_..."
+api_version = "2023-10-16"
+
+# SendGrid email service
+[integrations.sendgrid]
+api_key = "SG.xxxx"
+from_email = "noreply@example.com"
+templates = { welcome = "d-xxx", reset = "d-yyy" }
+
+# Google Analytics
+[integrations.google_analytics]
+tracking_id = "GA_TRACKING_ID"
+enhanced_ecommerce = true
+anonymize_ip = true
+
+# Sentry error tracking
+[integrations.sentry]
+dsn = "https://xxx@sentry.io/xxx"
+environment = "production"
+release = "1.2.3"
+sample_rate = 1.0
+
+# =============================================================================
+# LOCALIZATION & INTERNATIONALIZATION
+# =============================================================================
+
+[localization]
+default_locale = "en"
+fallback_locale = "en"
+supported_locales = ["en", "es", "fr", "de", "ja", "zh"]
+timezone = "UTC"
+date_format = "Y-m-d"
+time_format = "H:i:s"
+datetime_format = "Y-m-d H:i:s"
+
+# Currency settings
+[localization.currency]
+default = "USD"
+supported = ["USD", "EUR", "GBP", "JPY", "CAD"]
+display_format = "$%s"
+
+# Number formatting
+[localization.numbers]
+decimal_separator = "."
+thousands_separator = ","
+decimal_places = 2
+
+# =============================================================================
+# QUEUE CONFIGURATION
+# =============================================================================
+
+[queue]
+default_connection = "redis"
+failed_job_provider = "database"
+
+# Redis queue connection
+[queue.connections.redis]
+driver = "redis"
+connection = "default"
+queue = "default"
+retry_after = 90
+block_for = null
+
+# Database queue connection
+[queue.connections.database]
+driver = "database"
+table = "jobs"
+queue = "default"
+retry_after = 90
+
+# Queue job configuration
+[queue.jobs]
+email_notifications = { queue = "emails", delay = 0, timeout = 30 }
+image_processing = { queue = "media", delay = 0, timeout = 300 }
+data_export = { queue = "exports", delay = 0, timeout = 600 }
+cleanup_tasks = { queue = "maintenance", delay = 0, timeout = 120 }
+
+# =============================================================================
+# TESTING CONFIGURATION
+# =============================================================================
+
+[testing]
+environment = "testing"
+database_url = "postgresql://test_user:test_pass@localhost:5432/test_db"
+redis_url = "redis://localhost:6379/1"
+parallel_jobs = 4
+coverage_threshold = 80.0
+
+# Test data seeding
+[testing.seeds]
+users = 100
+posts = 500
+comments = 1000
+categories = 20
+
+# =============================================================================
+# DEVELOPMENT TOOLS
+# =============================================================================
+
+[development]
+hot_reload = true
+debug_toolbar = true
+profiling_enabled = true
+query_logging = true
+
+# Code style and linting
+[development.linting]
+enabled = true
+strict_mode = true
+max_line_length = 120
+tab_size = 4
+
+# =============================================================================
+# MULTI-LINE STRINGS AND COMPLEX DATA
+# =============================================================================
+
+# Multi-line basic string
+sql_query = """
+SELECT users.id, users.name, users.email,
+       COUNT(posts.id) as post_count
+FROM users
+LEFT JOIN posts ON users.id = posts.user_id
+WHERE users.active = true
+GROUP BY users.id, users.name, users.email
+ORDER BY post_count DESC
+LIMIT 10;
+"""
+
+# Multi-line literal string (preserves backslashes)
+regex_pattern = '''
+^(?P<protocol>https?://)
+(?P<host>[a-zA-Z0-9.-]+)
+(?:(?P<port>:\d+))?
+(?P<path>/[^\s]*)?
+$
+'''
+
+# Complex nested configuration example
+[notification_templates.email.user_actions]
+welcome = { subject = "Welcome to our platform!", template = "welcome.html", delay = 0 }
+password_reset = { subject = "Password Reset Request", template = "reset.html", delay = 0 }
+account_verification = { subject = "Please verify your account", template = "verify.html", delay = 300 }
+
+# Array of tables for multiple environments
+[[environments]]
+name = "development"
+url = "http://localhost:8080"
+database_url = "postgresql://dev_user:dev_pass@localhost:5432/dev_db"
+debug = true
+
+[[environments]]
+name = "staging"
+url = "https://staging.example.com"
+database_url = "postgresql://staging_user:staging_pass@staging-db:5432/staging_db"
+debug = false
+
+[[environments]]
+name = "production"
+url = "https://example.com"
+database_url = "postgresql://prod_user:prod_pass@prod-db:5432/prod_db"
+debug = false
+
+# Service dependencies with inline tables
+[[services]]
+name = "user-service"
+host = "user-service.internal"
+port = 8081
+health_check = { path = "/health", interval = 30, timeout = 5 }
+circuit_breaker = { failure_threshold = 5, recovery_timeout = 60 }
+
+[[services]]
+name = "notification-service"
+host = "notification-service.internal"
+port = 8082
+health_check = { path = "/health", interval = 30, timeout = 5 }
+circuit_breaker = { failure_threshold = 3, recovery_timeout = 30 }
+
+# =============================================================================
+# ADVANCED NUMERIC VALUES
+# =============================================================================
+
+[advanced_numbers]
+# Integer representations
+decimal_int = 123456
+hex_int = 0xDEADBEEF
+octal_int = 0o755
+binary_int = 0b11010110
+
+# Float representations
+standard_float = 3.14159
+exponential_float = 5e+22
+fractional_exponential = 6.626e-34
+negative_exponential = -2.998e8
+
+# Special float values
+positive_infinity = inf
+negative_infinity = -inf
+not_a_number = nan
+
+# Large numbers with underscores for readability
+large_number = 1_000_000
+very_large_number = 9_223_372_036_854_775_807
+
+# =============================================================================
+# DATE AND TIME VALUES
+# =============================================================================
+
+[dates_and_times]
+# Date-only
+launch_date = 2024-01-15
+
+# DateTime with timezone
+event_start = 2024-03-15T10:30:00Z
+event_end = 2024-03-15T18:00:00-05:00
+
+# Local datetime (no timezone)
+local_meeting = 2024-02-20T14:30:00
+
+# Time-only
+daily_backup = 02:30:00
+maintenance_window = 23:59:59.999
+
+# =============================================================================
+# END OF CONFIGURATION
+# =============================================================================
+
+# This concludes the comprehensive TOML configuration file example.
+# It demonstrates the flexibility and readability of TOML for various
+# configuration scenarios in modern applications. 

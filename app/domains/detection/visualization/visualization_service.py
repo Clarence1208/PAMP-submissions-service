@@ -1,354 +1,413 @@
 """
-Visualization Service
-Handles React Flow AST generation and code similarity visualization.
+Visualization Service for generating React Flow compatible AST visualizations.
+Handles conversion of code tokens into interactive graph structures.
 """
 
 import logging
-from typing import Any, Dict, List
-
-from app.domains.detection.similarity_detection_service import SimilarityDetectionService
+from typing import List, Dict, Any, Optional
+from pathlib import Path
+import re
 
 logger = logging.getLogger(__name__)
 
 
 class VisualizationService:
-    def __init__(self):
+    """Service for generating React Flow compatible visualizations from code similarity analysis."""
+    
+    def __init__(self, tokenization_service=None):
         """Initialize the visualization service."""
-        self.similarity_service = SimilarityDetectionService()
+        if tokenization_service is None:
+            # Import here to avoid circular imports
+            from app.domains.tokenization.tokenization_service import TokenizationService
+            self.tokenization_service = TokenizationService()
+        else:
+            self.tokenization_service = tokenization_service
 
     def generate_react_flow_ast(
         self,
-        tokens1: List[Dict[str, Any]],
-        tokens2: List[Dict[str, Any]],
         source1: str = "",
         source2: str = "",
-        file1_name: str = "",
-        file2_name: str = "",
-        layout_type: str = "elk",
+        file1_name: str = "file1",
+        file2_name: str = "file2",
+        layout_engine: str = "elk"
     ) -> Dict[str, Any]:
         """
-        Generate optimized React Flow JSON representation with minimal payload.
-        Focused on essential data for visualization without excessive styling or layout configs.
-
-        Args:
-            tokens1: First set of tokens
-            tokens2: Second set of tokens
-            source1: Original source code of first file
-            source2: Original source code of second file
-            file1_name: Name of the first file
-            file2_name: Name of the second file
-            layout_type: Layout algorithm to use (elk, dagre, etc.)
+        Generate a React Flow compatible visualization from two sets of tokens.
+        
+        Returns:
+            Dictionary containing React Flow nodes and edges for visualization
         """
-        # First detect shared code blocks to see if we should include these files
-        shared_blocks_result = self.similarity_service.detect_shared_code_blocks(
-            tokens1, tokens2, source1, source2, file1_name, file2_name
-        )
+        try:
+            # Import here to avoid circular imports
+            from app.domains.detection.similarity_detection_service import SimilarityDetectionService
+            similarity_service = SimilarityDetectionService()
+            
+            # First detect shared code blocks to determine if we should include these files
+            from pathlib import Path
+            file1_path = Path(file1_name) if file1_name else None
+            file2_path = Path(file2_name) if file2_name else None
 
-        # If no similarities detected, return empty structure
-        if shared_blocks_result["total_shared_blocks"] == 0:
+            shared_blocks_result = similarity_service.detect_shared_code_blocks(
+                source1=source1,
+                source2=source2,
+                file1_name=file1_name,
+                file2_name=file2_name,
+                file1_path=file1_path,
+                file2_path=file2_path,
+                tokenization_service=self.tokenization_service
+            )
+
+            nodes = []
+            edges = []
+            shared_blocks = shared_blocks_result['shared_blocks']
+
+            # Generate nodes and edges for both files
+            file1_functions = self._extract_functions_with_imports(source1, file1_name)
+            file2_functions = self._extract_functions_with_imports(source2, file2_name)
+            
+            # Generate file1 nodes (calculator project)
+            file1_nodes = self._generate_file_group_nodes(
+                file1_functions, 
+                file1_name, 
+                "file1", 
+                shared_blocks,
+                source1,
+                source2
+            )
+            
+            # Generate file2 nodes (game project)  
+            file2_nodes = self._generate_file_group_nodes(
+                file2_functions,
+                file2_name,
+                "file2", 
+                shared_blocks,
+                source2,
+                source1
+            )
+            
+            nodes.extend(file1_nodes)
+            nodes.extend(file2_nodes)
+            
+            # Generate function call edges within each file
+            file1_call_edges = self._generate_function_call_edges(file1_functions, "file1", source1)
+            file2_call_edges = self._generate_function_call_edges(file2_functions, "file2", source2)
+            edges.extend(file1_call_edges)
+            edges.extend(file2_call_edges)
+            
+            # Generate similarity edges between files
+            similarity_edges = self._generate_similarity_edges_advanced(
+                file1_functions, file2_functions, shared_blocks
+            )
+            edges.extend(similarity_edges)
+            
+            # Calculate analysis metadata
+            total_similarities = len([edge for edge in similarity_edges if edge.get('data', {}).get('type') == 'similarity'])
+            average_similarity = sum(
+                edge.get('data', {}).get('similarity_score', 0) 
+                for edge in similarity_edges 
+                if edge.get('data', {}).get('type') == 'similarity'
+            ) / max(total_similarities, 1)
+            
+            has_similarity = total_similarities > 0
+            
+            return {
+                "nodes": nodes,
+                "edges": edges,
+                "has_similarity": has_similarity,
+                "analysis_metadata": {
+                    "total_similarities": total_similarities,
+                    "average_similarity": average_similarity,
+                    "algorithm": layout_engine + "_layered",
+                    "analysis_version": "2.1.0"
+                },
+                "file_metadata": {
+                    "file1": {
+                        "name": file1_name,
+                        "functions": len(file1_functions.get('functions', []))
+                    },
+                    "file2": {
+                        "name": file2_name, 
+                        "functions": len(file2_functions.get('functions', []))
+                    }
+                }
+            }
+            
+        except Exception as e:
+            # Fallback for any errors
             return {
                 "nodes": [],
                 "edges": [],
                 "has_similarity": False,
-                "message": "No similarities detected between files",
+                "error": f"Visualization generation failed: {str(e)}",
+                "layout": {"engine": layout_engine}
             }
 
-        # Generate flow representation for both files
-        nodes = []
-        edges = []
-        node_id_counter = 0
-
-        # File 1 flow - minimal layout config
-        file1_nodes, file1_edges, node_id_counter = self._generate_optimized_file_nodes(
-            tokens1, source1, file1_name, "file1", node_id_counter, shared_blocks_result["shared_blocks"]
-        )
-
-        # File 2 flow - minimal layout config
-        file2_nodes, file2_edges, node_id_counter = self._generate_optimized_file_nodes(
-            tokens2, source2, file2_name, "file2", node_id_counter, shared_blocks_result["shared_blocks"]
-        )
-
-        # Combine nodes and edges
-        nodes.extend(file1_nodes)
-        nodes.extend(file2_nodes)
-        edges.extend(file1_edges)
-        edges.extend(file2_edges)
-
-        # Add similarity connection edges between similar functions
-        similarity_edges = self._generate_similarity_edges(shared_blocks_result["shared_blocks"], nodes)
-        edges.extend(similarity_edges)
-
-        # Return optimized structure - removed excessive styling and layout configs
+    def _extract_functions_with_imports(self, source_code: str, filename: str) -> Dict[str, Any]:
+        """Extract functions and imports from source code."""
+        if not source_code:
+            return {"functions": [], "imports": []}
+            
+        # Extract functions
+        file_path = Path(filename)
+        functions_dict = self.tokenization_service.extract_functions_with_positions(source_code, file_path)
+        functions_list = list(functions_dict.values()) if functions_dict else []
+        
+        # Extract imports (simple regex-based extraction)
+        imports = []
+        import_lines = re.findall(r'^(?:from\s+\S+\s+)?import\s+([^#\n]+)', source_code, re.MULTILINE)
+        for import_line in import_lines:
+            # Clean up and split imports
+            clean_imports = [imp.strip().split(' as ')[0] for imp in import_line.split(',')]
+            imports.extend([imp.strip() for imp in clean_imports if imp.strip()])
+        
+        # Remove duplicates while preserving order
+        unique_imports = []
+        seen = set()
+        for imp in imports:
+            if imp not in seen:
+                unique_imports.append(imp)
+                seen.add(imp)
+        
         return {
-            "nodes": nodes,
-            "edges": edges,
-            "has_similarity": True,
-            "analysis_metadata": {
-                "total_similarities": shared_blocks_result["total_shared_blocks"],
-                "average_similarity": shared_blocks_result["average_similarity"],
-                "algorithm": "elk_layered",
-                "analysis_version": "2.1.0",
-            },
-            "file_metadata": {
-                "file1": {"name": file1_name, "functions": shared_blocks_result["functions_file1"]},
-                "file2": {"name": file2_name, "functions": shared_blocks_result["functions_file2"]},
-            },
+            "functions": functions_list,
+            "imports": unique_imports[:10]  # Limit to first 10 imports
         }
 
-    def _generate_optimized_file_nodes(
-        self,
-        tokens: List[Dict[str, Any]],
-        source_code: str,
-        filename: str,
+    def _generate_file_group_nodes(
+        self, 
+        file_data: Dict[str, Any], 
+        filename: str, 
         file_prefix: str,
-        node_id_counter: int,
         shared_blocks: List[Dict],
-    ) -> tuple:
-        """Generate ultra-lightweight React Flow nodes - no positions (ELK overwrites), no styling (frontend handles)."""
+        own_source: str,
+        other_source: str
+    ) -> List[Dict[str, Any]]:
+        """Generate React Flow nodes for a file in the expected group format."""
         nodes = []
-        edges = []
-
-        # Extract functions and imports using similarity service
-        functions = self.similarity_service._extract_functions_with_positions(tokens, source_code)
-        imports = self._extract_imports(tokens, source_code)
-
-        # Create file subflow container - absolutely minimal data
-        file_node_id = f"{file_prefix}_root"
-        file_subflow = {
-            "id": file_node_id,
+        functions = file_data.get('functions', [])
+        imports = file_data.get('imports', [])
+        
+        # File root group node
+        file_root_id = f"{file_prefix}_root"
+        nodes.append({
+            "id": file_root_id,
             "type": "group",
             "data": {
                 "label": f"📁 {filename}",
                 "type": "file_subflow",
                 "filename": filename,
                 "functions_count": len(functions),
-                "imports_count": len(imports),
-            },
-        }
-        nodes.append(file_subflow)
-
-        # Add imports group - no position (ELK will calculate)
+                "imports_count": len(imports)
+            }
+        })
+        
+        # Imports group node
         if imports:
-            import_group_id = f"{file_prefix}_imports_group"
-            import_node = {
-                "id": import_group_id,
+            imports_id = f"{file_prefix}_imports_group"
+            nodes.append({
+                "id": imports_id,
                 "type": "default",
                 "data": {
                     "label": f"📦 Imports ({len(imports)})",
                     "type": "import_group",
-                    "imports": [imp["module"] for imp in imports],
+                    "imports": imports
                 },
-                "parentNode": file_node_id,
-            }
-            nodes.append(import_node)
-
-        # Group functions by similarity
-        similar_functions = []
-        regular_functions = []
-
-        for func_name, func_data in functions.items():
-            similar_block = self._find_similarity_for_function(func_name, shared_blocks, file_prefix)
-            if similar_block:
-                similar_functions.append((func_name, func_data, similar_block))
+                "parentNode": file_root_id
+            })
+        
+        # Function nodes
+        for i, func in enumerate(functions):
+            func_id = f"{file_prefix}_function_{i}_{func['function_name']}"
+            
+            # Check for similarity with other file's functions
+            similarity_data = self._find_function_similarity(
+                func, shared_blocks, file_prefix, own_source, other_source
+            )
+            
+            # Generate function label with similarity indicator
+            if similarity_data['has_similarity']:
+                similarity_percent = similarity_data['similarity_score'] * 100
+                label = f"⚡ {func['function_name']} ({similarity_percent:.1f}%)"
             else:
-                regular_functions.append((func_name, func_data, None))
-
-        # Add similar functions with complete source code content - no position data
-        for i, (func_name, func_data, similar_block) in enumerate(similar_functions):
-            func_node_id = f"{file_prefix}_{func_name}"
-
-            # CRITICAL: Include complete source code content for comparison dialog
-            function_node = {
-                "id": func_node_id,
+                label = f"⚙️ {func['function_name']}"
+            
+            func_node = {
+                "id": func_id,
                 "type": "default",
                 "data": {
-                    "label": f"⚡ {func_data.get('function_name', 'unknown')} ({similar_block['similarity_score']:.1%})",
+                    "label": label,
                     "type": "function",
-                    "function_name": func_data.get("function_name", "unknown"),
-                    "start_line": func_data.get("start_line", 0),
-                    "end_line": func_data.get("end_line", 0),
+                    "function_name": func['function_name'],
+                    "start_line": func.get('start_line', 0),
+                    "end_line": func.get('end_line', 0),
+                    "has_similarity": similarity_data['has_similarity'],
+                    "similarity_score": similarity_data['similarity_score']
+                },
+                "parentNode": file_root_id
+            }
+            
+            # Add rich similarity data if found
+            if similarity_data['has_similarity']:
+                func_node["data"].update({
+                    "similarity_target": similarity_data['similarity_target'],
+                    "source_code": similarity_data['source_code'],
+                    "line_numbers": similarity_data['line_numbers'],
+                    "similarity_details": similarity_data['similarity_details']
+                })
+            
+            nodes.append(func_node)
+        
+        return nodes
+
+    def _find_function_similarity(
+        self, 
+        func: Dict[str, Any], 
+        shared_blocks: List[Dict], 
+        file_prefix: str,
+        own_source: str,
+        other_source: str
+    ) -> Dict[str, Any]:
+        """Find similarity data for a function based on shared blocks."""
+        for block in shared_blocks:
+            # Check if this function matches a shared block
+            func_matches = False
+            if file_prefix == "file1":
+                func_matches = (
+                    block.get('file1_function') == func['function_name'] or
+                    (block.get('file1_start_line', 0) <= func.get('start_line', 0) <= block.get('file1_end_line', 0))
+                )
+            else:
+                func_matches = (
+                    block.get('file2_function') == func['function_name'] or  
+                    (block.get('file2_start_line', 0) <= func.get('start_line', 0) <= block.get('file2_end_line', 0))
+                )
+            
+            if func_matches:
+                file1_code = block.get('file1_code_block', '')
+                file2_code = block.get('file2_code_block', '')
+                
+                return {
                     "has_similarity": True,
-                    "similarity_score": similar_block["similarity_score"],
-                    "similarity_target": similar_block.get(
-                        "file2_function" if file_prefix == "file1" else "file1_function"
-                    ),
-                    # CRITICAL: Full source code content for comparison dialog
+                    "similarity_score": block.get('similarity_score', 0.8),
+                    "similarity_target": f"function_{block.get('file2_function' if file_prefix == 'file1' else 'file1_function', 'unknown')}",
                     "source_code": {
-                        "file1_code": similar_block.get("file1_code_block", ""),
-                        "file2_code": similar_block.get("file2_code_block", ""),
+                        "file1_code": file1_code,
+                        "file2_code": file2_code
                     },
                     "line_numbers": {
                         "file1": {
-                            "start": similar_block.get("file1_start_line", 0),
-                            "end": similar_block.get("file1_end_line", 0),
+                            "start": block.get('file1_start_line', 0),
+                            "end": block.get('file1_end_line', 0)
                         },
                         "file2": {
-                            "start": similar_block.get("file2_start_line", 0),
-                            "end": similar_block.get("file2_end_line", 0),
-                        },
+                            "start": block.get('file2_start_line', 0), 
+                            "end": block.get('file2_end_line', 0)
+                        }
                     },
                     "similarity_details": {
                         "algorithm_used": "ast_similarity_v2",
-                        "similarity_type": "structural",
-                        "confidence_level": similar_block["similarity_score"],
-                        "common_patterns": similar_block.get("common_patterns", []),
-                    },
-                },
-                "parentNode": file_node_id,
-            }
-            nodes.append(function_node)
-
-        # Add regular functions - minimal data, no position
-        for i, (func_name, func_data, _) in enumerate(regular_functions):
-            func_node_id = f"{file_prefix}_{func_name}"
-
-            function_node = {
-                "id": func_node_id,
-                "type": "default",
-                "data": {
-                    "label": f"⚙️ {func_data.get('function_name', 'unknown')}",
-                    "type": "function",
-                    "function_name": func_data.get("function_name", "unknown"),
-                    "start_line": func_data.get("start_line", 0),
-                    "end_line": func_data.get("end_line", 0),
-                    "has_similarity": False,
-                    "similarity_score": 0,
-                },
-                "parentNode": file_node_id,
-            }
-            nodes.append(function_node)
-
-        # Generate function call edges - clean without styling
-        call_edges = self._analyze_function_calls(tokens, source_code, functions, file_prefix)
-        edges.extend(call_edges)
-
-        return nodes, edges, node_id_counter
-
-    def _analyze_function_calls(
-        self, tokens: List[Dict[str, Any]], source_code: str, functions: Dict, file_prefix: str
-    ) -> List[Dict]:
-        """Analyze function calls and create clean call edges - no styling (frontend handles with CSS)."""
-        call_edges = []
-
-        # Extract function names for reference
-        function_names = [func_data.get("function_name", "unknown") for func_data in functions.values()]
-        function_node_map = {
-            func_data.get("function_name", "unknown"): f"{file_prefix}_{func_name}"
-            for func_name, func_data in functions.items()
+                        "similarity_type": "structural", 
+                        "confidence_level": block.get('similarity_score', 0.8),
+                        "common_patterns": block.get('common_elements', [])
+                    }
+                }
+        
+        return {
+            "has_similarity": False,
+            "similarity_score": 0
         }
 
-        # Look for function calls in source code
-        source_lines = source_code.split("\n") if source_code else []
+    def _generate_function_call_edges(
+        self, 
+        file_data: Dict[str, Any], 
+        file_prefix: str, 
+        source_code: str
+    ) -> List[Dict[str, Any]]:
+        """Generate edges representing function calls within a file."""
+        edges = []
+        functions = file_data.get('functions', [])
+        
+        # Simple regex-based function call detection
+        for i, func in enumerate(functions):
+            func_id = f"{file_prefix}_function_{i}_{func['function_name']}"
+            
+            # Look for calls to other functions in this file
+            for j, other_func in enumerate(functions):
+                if i != j:
+                    other_func_id = f"{file_prefix}_function_{j}_{other_func['function_name']}"
+                    
+                    # Check if this function calls the other function
+                    func_code = func.get('code_block', '')
+                    call_pattern = rf'\b{re.escape(other_func["function_name"])}\s*\('
+                    
+                    if re.search(call_pattern, func_code):
+                        # Find approximate line number of the call
+                        call_line = func.get('start_line', 0)
+                        for line_num, line in enumerate(func_code.split('\n')):
+                            if re.search(call_pattern, line):
+                                call_line = func.get('start_line', 0) + line_num
+                                break
+                        
+                        edges.append({
+                            "id": f"call_edge_{func_id}_to_{other_func_id}",
+                            "source": func_id,
+                            "target": other_func_id,
+                            "type": "smoothstep",
+                            "label": "calls",
+                            "animated": True,
+                            "data": {
+                                "type": "function_call",
+                                "line": call_line
+                            }
+                        })
+        
+        return edges
 
-        for i, line in enumerate(source_lines):
-            for func_name in function_names:
-                if f"{func_name}(" in line and not line.strip().startswith("def "):
-                    # Found a function call
-                    calling_function = self._find_containing_function(i + 1, source_lines, function_names)
-
-                    if calling_function and calling_function != func_name:
-                        caller_id = function_node_map.get(calling_function)
-                        callee_id = function_node_map.get(func_name)
-
-                        if caller_id and callee_id:
-                            call_edges.append(
-                                {
-                                    "id": f"call_edge_{caller_id}_to_{callee_id}",
-                                    "source": caller_id,
-                                    "target": callee_id,
-                                    "type": "smoothstep",
-                                    "label": "calls",
-                                    "animated": True,
-                                    "data": {"type": "function_call", "line": i + 1},
-                                }
-                            )
-
-        return call_edges
-
-    def _extract_imports(self, tokens: List[Dict[str, Any]], source_code: str) -> List[Dict]:
-        """Extract import statements and their details."""
-        imports = []
-        source_lines = source_code.split("\n") if source_code else []
-
-        for i, line in enumerate(source_lines):
-            line = line.strip()
-            if line.startswith("import "):
-                # Handle 'import module'
-                module = line[7:].split()[0].split(".")[0]  # Get first part
-                imports.append({"module": module, "type": "import", "line": i + 1})
-            elif line.startswith("from "):
-                # Handle 'from module import ...'
-                parts = line.split()
-                if len(parts) >= 4 and parts[2] == "import":
-                    module = parts[1]
-                    imports.append({"module": module, "type": "from_import", "line": i + 1})
-
-        return imports
-
-    def _find_similarity_for_function(self, func_name: str, shared_blocks: List[Dict], file_prefix: str) -> Dict:
-        """Find similarity block for a given function."""
+    def _generate_similarity_edges_advanced(
+        self, 
+        file1_data: Dict[str, Any], 
+        file2_data: Dict[str, Any],
+        shared_blocks: List[Dict]
+    ) -> List[Dict[str, Any]]:
+        """Generate similarity edges between functions from different files."""
+        edges = []
+        edge_counter = 0
+        
+        file1_functions = file1_data.get('functions', [])
+        file2_functions = file2_data.get('functions', [])
+        
         for block in shared_blocks:
-            if file_prefix == "file1" and block.get("file1_function") == func_name:
-                return block
-            elif file_prefix == "file2" and block.get("file2_function") == func_name:
-                return block
-        return None
-
-    def _generate_similarity_edges(self, shared_blocks: List[Dict], all_nodes: List[Dict]) -> List[Dict]:
-        """Generate clean edges connecting similar functions - no styling (frontend handles with CSS)."""
-        similarity_edges = []
-
-        for i, block in enumerate(shared_blocks):
-            file1_func = block.get("file1_function", "")
-            file2_func = block.get("file2_function", "")
-
-            # Find corresponding nodes
-            file1_node_id = f"file1_{file1_func}"
-            file2_node_id = f"file2_{file2_func}"
-
-            # Check if both nodes exist
-            file1_node_exists = any(node["id"] == file1_node_id for node in all_nodes)
-            file2_node_exists = any(node["id"] == file2_node_id for node in all_nodes)
-
-            if file1_node_exists and file2_node_exists:
-                similarity_edges.append(
-                    {
-                        "id": f"similarity_edge_{i}",
-                        "source": file1_node_id,
-                        "target": file2_node_id,
-                        "animated": True,
-                        "type": "bezier",
-                        "data": {"type": "similarity", "similarity_score": block.get("similarity_score", 0)},
+            # Find matching functions
+            file1_func_id = None
+            file2_func_id = None
+            
+            # Find file1 function
+            for i, func in enumerate(file1_functions):
+                if (func['function_name'] == block.get('file1_function') or
+                    (block.get('file1_start_line', 0) <= func.get('start_line', 0) <= block.get('file1_end_line', 0))):
+                    file1_func_id = f"file1_function_{i}_{func['function_name']}"
+                    break
+            
+            # Find file2 function
+            for i, func in enumerate(file2_functions):
+                if (func['function_name'] == block.get('file2_function') or
+                    (block.get('file2_start_line', 0) <= func.get('start_line', 0) <= block.get('file2_end_line', 0))):
+                    file2_func_id = f"file2_function_{i}_{func['function_name']}"
+                    break
+            
+            # Create similarity edge if both functions found
+            if file1_func_id and file2_func_id:
+                edges.append({
+                    "id": f"similarity_edge_{edge_counter}",
+                    "source": file1_func_id,
+                    "target": file2_func_id,
+                    "animated": True,
+                    "type": "bezier", 
+                    "data": {
+                        "type": "similarity",
+                        "similarity_score": block.get('similarity_score', 0.8)
                     }
-                )
-
-        return similarity_edges
-
-    def _find_containing_function(self, line_num: int, source_lines: List[str], function_names: List[str]) -> str:
-        """Find which function contains a given line number."""
-        # Check if line number is valid
-        if line_num <= 0 or line_num > len(source_lines):
-            return None
-
-        # Look backwards from the line to find the containing function
-        for i in range(line_num - 1, -1, -1):
-            line = source_lines[i].strip()
-            if line.startswith("def "):
-                # Extract function name
-                func_part = line[4:].split("(")[0].strip()
-                if func_part in function_names:
-                    return func_part
-        return None
-
-    # Delegate methods to SimilarityDetectionService
-    def _extract_functions_with_positions(self, tokens: List[Dict[str, Any]], source_code: str = "") -> Dict[str, Dict]:
-        """Delegate to SimilarityDetectionService for function extraction."""
-        return self.similarity_service._extract_functions_with_positions(tokens, source_code)
-
-    def _extract_function_name(self, function_token: Dict[str, Any], all_tokens: List[Dict[str, Any]]) -> str:
-        """Delegate to SimilarityDetectionService for function name extraction."""
-        return self.similarity_service._extract_function_name(function_token, all_tokens)
-
-    def _extract_code_block(self, source_lines: List[str], start_line: int, end_line: int) -> str:
-        """Delegate to SimilarityDetectionService for code block extraction."""
-        return self.similarity_service._extract_code_block(source_lines, start_line, end_line)
+                })
+                edge_counter += 1
+        
+        return edges

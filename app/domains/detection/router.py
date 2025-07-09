@@ -80,8 +80,13 @@ async def test_project_similarity(tokenization_service: TokenizationService = De
         # Project-level similarity analysis
         overall_similarity = similarity_service.compare_similarity(calc_all_tokens, game_all_tokens)
         shared_blocks_result = similarity_service.detect_shared_code_blocks(
-            calc_all_tokens, game_all_tokens, calc_all_source, game_all_source,
-            "calculator_project", "game_project"
+            source1=calc_all_source,
+            source2=game_all_source,
+            file1_name="calculator_project",
+            file2_name="game_project",
+            file1_path=calculator_project,
+            file2_path=game_project,
+            tokenization_service=tokenization_service
         )
 
         # File-by-file analysis
@@ -98,8 +103,13 @@ async def test_project_similarity(tokenization_service: TokenizationService = De
 
                 file_similarity = similarity_service.compare_similarity(calc_tokens, game_tokens)
                 file_shared = similarity_service.detect_shared_code_blocks(
-                    calc_tokens, game_tokens, calc_content, game_content,
-                    calc_file.name, game_file.name
+                    source1=calc_content,
+                    source2=game_content,
+                    file1_name=calc_file.name,
+                    file2_name=game_file.name,
+                    file1_path=calc_file,
+                    file2_path=game_file,
+                    tokenization_service=tokenization_service
                 )
 
                 file_comparisons.append({
@@ -210,8 +220,13 @@ async def test_project_similarity_simple(tokenization_service: TokenizationServi
         # Analyze similarity
         overall_similarity = similarity_service.compare_similarity(calc_all_tokens, game_all_tokens)
         shared_blocks_result = similarity_service.detect_shared_code_blocks(
-            calc_all_tokens, game_all_tokens, calc_all_source, game_all_source,
-            "calculator_project", "game_project"
+            source1=calc_all_source,
+            source2=game_all_source,
+            file1_name="calculator_project",
+            file2_name="game_project",
+            file1_path=calculator_project,
+            file2_path=game_project,
+            tokenization_service=tokenization_service
         )
 
         return {
@@ -231,7 +246,7 @@ async def test_project_similarity_simple(tokenization_service: TokenizationServi
 
 
 @router.get("/similarity-test/files/{file1}/{file2}")
-async def compare_specific_files(file1: str, file2: str):
+async def compare_specific_files(file1: str, file2: str, tokenization_service: TokenizationService = Depends(get_tokenization_service)):
     """
     Compare two specific files from the test projects.
     
@@ -241,7 +256,6 @@ async def compare_specific_files(file1: str, file2: str):
     """
     try:
         # Initialize services
-        tokenization_service = TokenizationService()
         similarity_service = SimilarityDetectionService()
 
         # Define file paths
@@ -266,8 +280,13 @@ async def compare_specific_files(file1: str, file2: str):
         # Analyze similarity
         similarity = similarity_service.compare_similarity(calc_tokens, game_tokens)
         shared_blocks = similarity_service.detect_shared_code_blocks(
-            calc_tokens, game_tokens, calc_content, game_content,
-            file1, file2
+            source1=calc_content,
+            source2=game_content,
+            file1_name=file1,
+            file2_name=file2,
+            file1_path=calc_file_path,
+            file2_path=game_file_path,
+            tokenization_service=tokenization_service
         )
 
         return {
@@ -385,16 +404,14 @@ async def get_react_flow_ast_for_projects():
         for calc_file in calc_files:
             with open(calc_file, 'r', encoding='utf-8') as f:
                 calc_content = f.read()
-            calc_tokens = tokenization_service.tokenize(calc_content, calc_file)
 
             for game_file in game_files:
                 with open(game_file, 'r', encoding='utf-8') as f:
                     game_content = f.read()
-                game_tokens = tokenization_service.tokenize(game_content, game_file)
 
                 # Generate optimized React Flow AST for this pair
                 react_flow_data = visualization_service.generate_react_flow_ast(
-                    calc_tokens, game_tokens, calc_content, game_content,
+                   calc_content, game_content,
                     calc_file.name, game_file.name, "elk"  # Always use ELK
                 )
 

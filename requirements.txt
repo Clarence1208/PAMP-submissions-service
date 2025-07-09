@@ -12,11 +12,11 @@ pytz==2024.1
 
 # Tree-sitter dependencies for tokenization
 tree-sitter==0.24.0
-tree-sitter-python==0.23.6
-# todo will need to install all languages i want to support later
+tree-sitter-language-pack==0.9.0
+# Provides all tree-sitter language parsers in a single package (165+ languages)
 
 # Development dependencies
-black==23.11.0
+black==24.3.0
 isort==5.12.0
 flake8==6.1.0
 pytest-cov==4.1.0
