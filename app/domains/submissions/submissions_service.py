@@ -183,6 +183,37 @@ class SubmissionService:
 
         return CreateSubmissionResponseDto(**response_data)
 
+    def get_submission_by_project_group_step(self, project_uuid, group_uuid, project_step_uuid):
+        """Get a submission by project, group and step"""
+        submission = self.repository.get_by_project_group_step(
+            project_uuid=project_uuid,
+            group_uuid=group_uuid,
+            project_step_uuid=project_step_uuid,
+        )
+
+        if not submission:
+            raise NotFoundException(
+                f"Submission for project {project_uuid}, group {group_uuid}, and step {project_step_uuid} not found"
+            )
+
+        response_data = {
+            "success": True,
+            "message": "Submission retrieved successfully",
+            "submission_id": submission.id,
+            "data": SubmissionResponseDto.model_validate(submission.model_dump()),
+        }
+
+        # Include stored rule results if they exist
+        if submission.rule_results:
+            try:
+                stored_results = json.loads(submission.rule_results)
+                response_data["rule_results"] = stored_results
+            except (json.JSONDecodeError, TypeError) as e:
+                logger.warning(f"Failed to parse stored rule results: {e}")
+                # Don't include rule_results if parsing fails
+
+        return CreateSubmissionResponseDto(**response_data)
+
     def get_submissions_by_project_and_group(self, project_uuid: UUID, group_uuid: UUID) -> List[SubmissionResponseDto]:
         """Get all submissions for a specific project and group"""
         submissions = self.repository.get_by_project_and_group(project_uuid, group_uuid)

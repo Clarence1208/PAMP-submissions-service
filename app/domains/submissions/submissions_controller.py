@@ -87,6 +87,24 @@ async def get_submission(submission_id: UUID, service: SubmissionService = Depen
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.get(
+    "/project/{project_uuid}/group/{group_uuid}/step/{project_step_uuid}", response_model=CreateSubmissionResponseDto
+)
+async def get_submission_by_project_group_step(
+    project_uuid: UUID,
+    group_uuid: UUID,
+    project_step_uuid: UUID,
+    service: SubmissionService = Depends(get_submission_service),
+):
+    """Get a submission by project, group and step"""
+    try:
+        return service.get_submission_by_project_group_step(project_uuid, group_uuid, project_step_uuid)
+    except NotFoundException as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except DatabaseException as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("", response_model=List[SubmissionResponseDto])
 async def list_submissions(
     skip: int = Query(0, ge=0, description="Number of submissions to skip"),
