@@ -83,6 +83,18 @@ class SubmissionRepository:
         except Exception as e:
             raise DatabaseException(f"Failed to get submission: {str(e)}")
 
+    def get_by_project_group_step(self, project_uuid, group_uuid, project_step_uuid):
+        """Get submission by project, group, and step"""
+        try:
+            statement = select(Submission).where(
+                Submission.project_uuid == project_uuid,
+                Submission.group_uuid == group_uuid,
+                Submission.project_step_uuid == project_step_uuid,
+            )
+            return self.session.exec(statement).first()
+        except Exception as e:
+            raise DatabaseException(f"Failed to get submission: {str(e)}")
+
     def get_by_project_and_group(self, project_uuid: UUID, group_uuid: UUID) -> List[Submission]:
         """Get all submissions for a specific project and group"""
         try:
