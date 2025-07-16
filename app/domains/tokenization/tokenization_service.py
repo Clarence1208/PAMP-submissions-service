@@ -3,7 +3,7 @@ import shutil
 import tempfile
 from pathlib import Path
 from typing import List, Dict, Any, Optional
-from uuid import uuid4
+from uuid import uuid4, UUID
 
 from tree_sitter import Parser, Language, Query
 from tree_sitter_language_pack import get_language, get_parser
@@ -11,6 +11,7 @@ from tree_sitter_language_pack import get_language, get_parser
 from app.domains.detection.similarity_detection_service import SimilarityDetectionService
 from app.domains.repositories.submission_fetcher import SubmissionFetcher
 from app.domains.submissions.dto.create_submission_dto import CreateSubmissionDto
+from app.domains.tokenization.custom_cache import CustomCache
 from app.shared.exceptions import ValidationException
 from app.domains.repositories.exceptions import (
     RepositoryFetchException, UnsupportedRepositoryException,
@@ -28,6 +29,12 @@ class TokenizationService:
         self.language_mapping = {}
         self.similarity_service = SimilarityDetectionService()
         self.submission_fetcher = SubmissionFetcher()
+        self.cache = CustomCache(
+            hot_max_memory_mb=300,
+            cold_db_path="/tmp/tokenization_cache",
+            hot_threshold_percent=80.0,
+            batch_size=50
+        )
         self._setup_language_mapping()
         self._setup_parsers()
 
@@ -736,11 +743,18 @@ class TokenizationService:
         """Get list of all supported file extensions"""
         return list(self.language_mapping.keys())
 
-    def tokenize(self, text: str, file_path: Optional[Path] = None) -> List[Dict[str, Any]]:
+    def tokenize(self, text: str, file_path: Optional[Path] = None, submission_id: Optional[UUID] = None) -> List[Dict[str, Any]]:
         """
         Tokenizes the input text into a list of tokens using tree-sitter.
         """
         try:
+            if submission_id and file_path:
+                tokens = self.cache.get(submission_id + file_path)
+
+                if tokens is not None:
+                    logger.debug(f"Cache hit for {submission_id} + {file_path}, returning cached tokens")
+                    return tokens
+
             # Detect language
             lang_key = self._detect_language(file_path)
 
@@ -765,6 +779,13 @@ class TokenizationService:
             self._extract_tokens(root_node, text.encode('utf8'), tokens)
 
             logger.debug(f"Tokenized {len(tokens)} tokens for language: {lang_key}")
+
+            if submission_id and file_path:
+                # Store tokens in cache
+                self.cache.set(submission_id + file_path, tokens)
+                logger.debug(f"Stored {len(tokens)} tokens in cache for {submission_id} + {file_path}")
+
+
             return tokens
 
         except Exception as e:
