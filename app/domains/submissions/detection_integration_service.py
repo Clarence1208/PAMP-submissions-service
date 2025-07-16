@@ -144,7 +144,6 @@ class DetectionIntegrationService:
                 repo1_compatible_files = self.tokenization_service.extract_supported_files_from_directory(repo1_path)
                 repo2_compatible_files = self.tokenization_service.extract_supported_files_from_directory(repo2_path)
 
-
                 for file_path in repo1_compatible_files:
                     if not file_path.is_file():
                         continue
@@ -155,7 +154,6 @@ class DetectionIntegrationService:
                         tokens = self.tokenization_service.tokenize(content, file_path)
                         tokens1.extend(tokens)
                         source1 += f"\n# === {file_path.name} ===\n" + content + "\n"
-
 
                 for file_path in repo2_compatible_files:
                     if not file_path.is_file():
