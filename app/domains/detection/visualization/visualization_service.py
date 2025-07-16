@@ -142,6 +142,131 @@ class VisualizationService:
                 "layout": {"engine": layout_engine}
             }
 
+    def generate_react_flow_ast_with_cache(
+        self,
+        source1: str = "",
+        source2: str = "",
+        file1_name: str = "file1",
+        file2_name: str = "file2",
+        layout_engine: str = "elk",
+        submission1_id: Optional[str] = None,
+        submission2_id: Optional[str] = None,
+        file1_path: Optional[Path] = None,
+        file2_path: Optional[Path] = None,
+        project1_root: Optional[Path] = None,
+        project2_root: Optional[Path] = None
+    ) -> Dict[str, Any]:
+        """
+        Generate a React Flow compatible visualization from two sets of tokens with caching support.
+        This method leverages the tokenization cache when submission context is available.
+        
+        Returns:
+            Dictionary containing React Flow nodes and edges for visualization
+        """
+        try:
+            # Import here to avoid circular imports
+            from app.domains.detection.similarity_detection_service import SimilarityDetectionService
+            similarity_service = SimilarityDetectionService()
+            
+            # Use cached shared block detection when possible
+            shared_blocks_result = similarity_service.detect_shared_code_blocks_with_cache(
+                source1=source1,
+                source2=source2,
+                file1_name=file1_name,
+                file2_name=file2_name,
+                file1_path=file1_path,
+                file2_path=file2_path,
+                tokenization_service=self.tokenization_service,
+                submission1_id=submission1_id,
+                submission2_id=submission2_id,
+                project1_root=project1_root,
+                project2_root=project2_root
+            )
+
+            nodes = []
+            edges = []
+            shared_blocks = shared_blocks_result['shared_blocks']
+
+            # Generate nodes and edges for both files with caching
+            file1_functions = self._extract_functions_with_imports_cached(
+                source1, file1_name, submission1_id, file1_path, project1_root
+            )
+            file2_functions = self._extract_functions_with_imports_cached(
+                source2, file2_name, submission2_id, file2_path, project2_root
+            )
+            
+            # Generate file1 nodes (calculator project)
+            file1_nodes = self._generate_file_group_nodes(
+                file1_functions, 
+                file1_name, 
+                "file1", 
+                shared_blocks,
+                source1,
+                source2
+            )
+            
+            # Generate file2 nodes (game project)  
+            file2_nodes = self._generate_file_group_nodes(
+                file2_functions,
+                file2_name,
+                "file2", 
+                shared_blocks,
+                source2,
+                source1
+            )
+            
+            nodes.extend(file1_nodes)
+            nodes.extend(file2_nodes)
+            
+            # Generate function call edges within each file
+            file1_call_edges = self._generate_function_call_edges(file1_functions, "file1", source1)
+            file2_call_edges = self._generate_function_call_edges(file2_functions, "file2", source2)
+            edges.extend(file1_call_edges)
+            edges.extend(file2_call_edges)
+            
+            # Generate similarity edges between files
+            similarity_edges = self._generate_similarity_edges_advanced(
+                file1_functions, file2_functions, shared_blocks
+            )
+            edges.extend(similarity_edges)
+            
+            # Calculate analysis metadata
+            total_similarities = len([edge for edge in similarity_edges if edge.get('data', {}).get('type') == 'similarity'])
+            average_similarity = sum(
+                edge.get('data', {}).get('similarity_score', 0) 
+                for edge in similarity_edges 
+                if edge.get('data', {}).get('type') == 'similarity'
+            ) / max(total_similarities, 1)
+            
+            has_similarity = total_similarities > 0
+            
+            return {
+                "nodes": nodes,
+                "edges": edges,
+                "has_similarity": has_similarity,
+                "analysis_metadata": {
+                    "total_similarities": total_similarities,
+                    "average_similarity": average_similarity,
+                    "algorithm": layout_engine + "_layered",
+                    "analysis_version": "2.1.0"
+                },
+                "file_metadata": {
+                    "file1": {
+                        "name": file1_name,
+                        "functions": len(file1_functions.get('functions', []))
+                    },
+                    "file2": {
+                        "name": file2_name, 
+                        "functions": len(file2_functions.get('functions', []))
+                    }
+                }
+            }
+            
+        except Exception as e:
+            # Fallback to non-cached version
+            logger.warning(f"Cache-aware visualization failed, falling back to standard method: {e}")
+            return self.generate_react_flow_ast(source1, source2, file1_name, file2_name, layout_engine)
+
     def _extract_functions_with_imports(self, source_code: str, filename: str) -> Dict[str, Any]:
         """Extract functions and imports from source code."""
         if not source_code:
@@ -151,6 +276,58 @@ class VisualizationService:
         file_path = Path(filename)
         functions_dict = self.tokenization_service.extract_functions_with_positions(source_code, file_path)
         functions_list = list(functions_dict.values()) if functions_dict else []
+        
+        # Extract imports (simple regex-based extraction)
+        imports = []
+        import_lines = re.findall(r'^(?:from\s+\S+\s+)?import\s+([^#\n]+)', source_code, re.MULTILINE)
+        for import_line in import_lines:
+            # Clean up and split imports
+            clean_imports = [imp.strip().split(' as ')[0] for imp in import_line.split(',')]
+            imports.extend([imp.strip() for imp in clean_imports if imp.strip()])
+        
+        # Remove duplicates while preserving order
+        unique_imports = []
+        seen = set()
+        for imp in imports:
+            if imp not in seen:
+                unique_imports.append(imp)
+                seen.add(imp)
+        
+        return {
+            "functions": functions_list,
+            "imports": unique_imports[:10]  # Limit to first 10 imports
+        }
+
+    def _extract_functions_with_imports_cached(
+        self, 
+        source_code: str, 
+        filename: str,
+        submission_id: Optional[str] = None,
+        file_path: Optional[Path] = None,
+        project_root: Optional[Path] = None
+    ) -> Dict[str, Any]:
+        """Extract functions and imports from source code with caching support."""
+        if not source_code:
+            return {"functions": [], "imports": []}
+            
+        # Extract functions with caching when submission context is available
+        if submission_id and file_path and project_root:
+            try:
+                functions_dict = self.tokenization_service.extract_functions_with_positions(
+                    source_code, file_path
+                )
+                functions_list = list(functions_dict.values()) if functions_dict else []
+            except Exception as e:
+                logger.warning(f"Cached function extraction failed, falling back: {e}")
+                # Fallback to non-cached
+                file_path_obj = Path(filename)
+                functions_dict = self.tokenization_service.extract_functions_with_positions(source_code, file_path_obj)
+                functions_list = list(functions_dict.values()) if functions_dict else []
+        else:
+            # Use original method when no caching context
+            file_path_obj = Path(filename)
+            functions_dict = self.tokenization_service.extract_functions_with_positions(source_code, file_path_obj)
+            functions_list = list(functions_dict.values()) if functions_dict else []
         
         # Extract imports (simple regex-based extraction)
         imports = []

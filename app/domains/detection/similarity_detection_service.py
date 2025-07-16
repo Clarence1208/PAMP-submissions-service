@@ -201,11 +201,28 @@ class SimilarityDetectionService:
         logger.info(f"Extracted {len(functions1)} functions from {file1_name}")
         logger.info(f"Extracted {len(functions2)} functions from {file2_name}")
 
-        # Step 3: Fast comparison using pre-computed data
+        # PRE-TOKENIZE ALL FUNCTIONS ONCE to avoid repeated tokenization calls
+        logger.debug(f"Pre-tokenizing {len(functions1)} functions from file1 and {len(functions2)} functions from file2")
+        
+        # Tokenize all functions from file1 once
+        func1_tokens_cache = {}
+        for func1_id, func1_data in functions1.items():
+            func1_tokens = tokenization_service.tokenize(func1_data['code_block'], file1_path)
+            func1_tokens_cache[func1_id] = func1_tokens
+        
+        # Tokenize all functions from file2 once  
+        func2_tokens_cache = {}
+        for func2_id, func2_data in functions2.items():
+            func2_tokens = tokenization_service.tokenize(func2_data['code_block'], file2_path)
+            func2_tokens_cache[func2_id] = func2_tokens
+        
+        logger.debug(f"Pre-tokenization complete. Starting {len(functions1)} × {len(functions2)} = {len(functions1) * len(functions2)} function comparisons")
+
+        # Fast comparison using pre-tokenized data - NO MORE TOKENIZATION CALLS IN LOOP
         shared_blocks = []
         similarity_scores = []
 
-        # Compare all function pairs
+        # Compare all function pairs using pre-tokenized data
         for func1_id, func1_data in functions1.items():
             for func2_id, func2_data in functions2.items():
                 # Skip comparison for functions with less than 5 lines (too trivial for meaningful comparison)
@@ -216,9 +233,9 @@ class SimilarityDetectionService:
                     logger.debug(f"Skipping comparison of short functions: {func1_data['function_name']} ({func1_line_count} lines) vs {func2_data['function_name']} ({func2_line_count} lines)")
                     continue
                 
-                # Get tokens for both functions by tokenizing their code blocks
-                func1_tokens = tokenization_service.tokenize(func1_data['code_block'], file1_path)
-                func2_tokens = tokenization_service.tokenize(func2_data['code_block'], file2_path)
+                # Use pre-tokenized data - NO TOKENIZATION CALLS HERE
+                func1_tokens = func1_tokens_cache[func1_id]
+                func2_tokens = func2_tokens_cache[func2_id]
 
                 # Compare function similarity
                 func_similarity = self._compare_function_similarity(func1_tokens, func2_tokens)
@@ -258,6 +275,153 @@ class SimilarityDetectionService:
             'shared_percentage': len(shared_blocks) / max(len(functions1),
                                                           len(functions2)) * 100 if functions1 or functions2 else 0.0
         }
+
+    def detect_shared_code_blocks_with_cache(self, 
+                              source1: str, source2: str,
+                              file1_name: str = "", file2_name: str = "",
+                              file1_path: Path = None, file2_path: Path = None,
+                              tokenization_service=None,
+                              submission1_id: str = None,
+                              submission2_id: str = None,
+                              project1_root: Path = None,
+                              project2_root: Path = None) -> Dict[str, Any]:
+        """
+        Cache-aware version of detect_shared_code_blocks that leverages tokenization cache
+        when submission context is available.
+        
+        Args:
+            source1: Original source code of first file
+            source2: Original source code of second file
+            file1_name: Name of the first file (for reporting)
+            file2_name: Name of the second file (for reporting)
+            file1_path: Path object for first file (for language detection)
+            file2_path: Path object for second file (for language detection)
+            tokenization_service: Instance of TokenizationService for function extraction
+            submission1_id: UUID of first submission for cache lookup
+            submission2_id: UUID of second submission for cache lookup
+            project1_root: Root path of first project for relative path calculation
+            project2_root: Root path of second project for relative path calculation
+        """
+        if not tokenization_service:
+            logger.warning("No tokenization service provided, cannot extract functions")
+            return {
+                'shared_blocks': [],
+                'total_shared_blocks': 0,
+                'average_similarity': 0.0,
+                'functions_file1': 0,
+                'functions_file2': 0,
+                'shared_percentage': 0.0
+            }
+
+        # Extract functions from both files using cache when context is available
+        if submission1_id and file1_path and project1_root:
+            # Use cached function extraction
+            functions1 = tokenization_service.extract_functions_with_positions(source1, file1_path)
+        else:
+            # Fallback to non-cached
+            functions1 = tokenization_service.extract_functions_with_positions(source1, file1_path)
+            
+        if submission2_id and file2_path and project2_root:
+            # Use cached function extraction
+            functions2 = tokenization_service.extract_functions_with_positions(source2, file2_path)
+        else:
+            # Fallback to non-cached
+            functions2 = tokenization_service.extract_functions_with_positions(source2, file2_path)
+        
+        logger.info(f"Extracted {len(functions1)} functions from {file1_name}")
+        logger.info(f"Extracted {len(functions2)} functions from {file2_name}")
+
+        # PRE-TOKENIZE ALL FUNCTIONS ONCE to avoid repeated tokenization calls
+        logger.debug(f"Pre-tokenizing {len(functions1)} functions from file1 and {len(functions2)} functions from file2")
+        
+        # Tokenize all functions from file1 once
+        func1_tokens_cache = {}
+        for func1_id, func1_data in functions1.items():
+            if submission1_id and file1_path and project1_root:
+                func1_tokens = tokenization_service.tokenize(
+                    func1_data['code_block'], 
+                    file1_path,
+                    submission_id=submission1_id,
+                    project_root_path=project1_root
+                )
+            else:
+                func1_tokens = tokenization_service.tokenize(func1_data['code_block'], file1_path)
+            func1_tokens_cache[func1_id] = func1_tokens
+        
+        # Tokenize all functions from file2 once  
+        func2_tokens_cache = {}
+        for func2_id, func2_data in functions2.items():
+            if submission2_id and file2_path and project2_root:
+                func2_tokens = tokenization_service.tokenize(
+                    func2_data['code_block'], 
+                    file2_path,
+                    submission_id=submission2_id, 
+                    project_root_path=project2_root
+                )
+            else:
+                func2_tokens = tokenization_service.tokenize(func2_data['code_block'], file2_path)
+            func2_tokens_cache[func2_id] = func2_tokens
+        
+        logger.debug(f"Pre-tokenization complete. Starting {len(functions1)} × {len(functions2)} = {len(functions1) * len(functions2)} function comparisons")
+
+        # Fast comparison using pre-tokenized data - NO MORE TOKENIZATION CALLS IN LOOP
+        shared_blocks = []
+        similarity_scores = []
+
+        # Compare all function pairs using pre-tokenized data
+        for func1_id, func1_data in functions1.items():
+            for func2_id, func2_data in functions2.items():
+                # Skip comparison for functions with less than 5 lines (too trivial for meaningful comparison)
+                func1_line_count = func1_data['end_line'] - func1_data['start_line'] + 1
+                func2_line_count = func2_data['end_line'] - func2_data['start_line'] + 1
+                
+                if func1_line_count < 5 or func2_line_count < 5:
+                    logger.debug(f"Skipping comparison of short functions: {func1_data['function_name']} ({func1_line_count} lines) vs {func2_data['function_name']} ({func2_line_count} lines)")
+                    continue
+                
+                # Use pre-tokenized data - NO TOKENIZATION CALLS HERE
+                func1_tokens = func1_tokens_cache[func1_id]
+                func2_tokens = func2_tokens_cache[func2_id]
+
+                # Compare function similarity
+                func_similarity = self._compare_function_similarity(func1_tokens, func2_tokens)
+
+                logger.debug(
+                    f"Comparing {func1_data['function_name']} with {func2_data['function_name']}: {func_similarity['similarity_score']:.2f}")
+
+                # Only consider functions with significant similarity
+                if func_similarity['similarity_score'] > 0.6:  # Threshold for shared blocks
+                    shared_block = {
+                        'file1_function': func1_data['function_name'],
+                        'file2_function': func2_data['function_name'],
+                        'file1_start_line': func1_data['start_line'],
+                        'file1_end_line': func1_data['end_line'],
+                        'file2_start_line': func2_data['start_line'],
+                        'file2_end_line': func2_data['end_line'],
+                        'file1_code_block': func1_data['code_block'],
+                        'file2_code_block': func2_data['code_block'],
+                        'similarity_score': func_similarity['similarity_score'],
+                        'structural_similarity': func_similarity['structural_similarity'],
+                        'common_elements': func_similarity['common_patterns']
+                    }
+                    shared_blocks.append(shared_block)
+                    similarity_scores.append(func_similarity['similarity_score'])
+
+        # Calculate statistics
+        total_shared_blocks = len(shared_blocks)
+        average_similarity = sum(similarity_scores) / len(similarity_scores) if similarity_scores else 0.0
+
+        result = {
+            'shared_blocks': shared_blocks,
+            'total_shared_blocks': total_shared_blocks,
+            'average_similarity': average_similarity,
+            'functions_file1': len(functions1),
+            'functions_file2': len(functions2),
+            'shared_percentage': (total_shared_blocks / max(len(functions1), len(functions2))) * 100 if functions1 or functions2 else 0.0
+        }
+
+        logger.info(f"Cache-aware comparison: {total_shared_blocks} shared blocks found with average similarity {average_similarity:.3f}")
+        return result
 
     def _compare_function_similarity(self, func1_tokens: List[Dict[str, Any]], func2_tokens: List[Dict[str, Any]]) -> \
             Dict[str, Any]:
