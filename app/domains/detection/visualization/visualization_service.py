@@ -267,7 +267,10 @@ class VisualizationService:
         own_source: str,
         other_source: str
     ) -> Dict[str, Any]:
-        """Find similarity data for a function based on shared blocks."""
+        """Find similarity data for a function based on shared blocks - returns the HIGHEST similarity match."""
+        best_match = None
+        highest_similarity = 0.0
+        
         for block in shared_blocks:
             # Check if this function matches a shared block
             func_matches = False
@@ -283,36 +286,42 @@ class VisualizationService:
                 )
             
             if func_matches:
-                file1_code = block.get('file1_code_block', '')
-                file2_code = block.get('file2_code_block', '')
+                current_similarity = block.get('similarity_score', 0.0)
                 
-                return {
-                    "has_similarity": True,
-                    "similarity_score": block.get('similarity_score', 0.8),
-                    "similarity_target": f"function_{block.get('file2_function' if file_prefix == 'file1' else 'file1_function', 'unknown')}",
-                    "source_code": {
-                        "file1_code": file1_code,
-                        "file2_code": file2_code
-                    },
-                    "line_numbers": {
-                        "file1": {
-                            "start": block.get('file1_start_line', 0),
-                            "end": block.get('file1_end_line', 0)
+                # Only update if this similarity is higher than the current best
+                if current_similarity > highest_similarity:
+                    highest_similarity = current_similarity
+                    file1_code = block.get('file1_code_block', '')
+                    file2_code = block.get('file2_code_block', '')
+                    
+                    best_match = {
+                        "has_similarity": True,
+                        "similarity_score": current_similarity,
+                        "similarity_target": f"function_{block.get('file2_function' if file_prefix == 'file1' else 'file1_function', 'unknown')}",
+                        "source_code": {
+                            "file1_code": file1_code,
+                            "file2_code": file2_code
                         },
-                        "file2": {
-                            "start": block.get('file2_start_line', 0), 
-                            "end": block.get('file2_end_line', 0)
+                        "line_numbers": {
+                            "file1": {
+                                "start": block.get('file1_start_line', 0),
+                                "end": block.get('file1_end_line', 0)
+                            },
+                            "file2": {
+                                "start": block.get('file2_start_line', 0), 
+                                "end": block.get('file2_end_line', 0)
+                            }
+                        },
+                        "similarity_details": {
+                            "algorithm_used": "ast_similarity_v2",
+                            "similarity_type": "structural", 
+                            "confidence_level": current_similarity,
+                            "common_patterns": block.get('common_elements', [])
                         }
-                    },
-                    "similarity_details": {
-                        "algorithm_used": "ast_similarity_v2",
-                        "similarity_type": "structural", 
-                        "confidence_level": block.get('similarity_score', 0.8),
-                        "common_patterns": block.get('common_elements', [])
                     }
-                }
         
-        return {
+        # Return the best match found, or no similarity if none found
+        return best_match if best_match else {
             "has_similarity": False,
             "similarity_score": 0
         }
