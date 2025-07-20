@@ -139,17 +139,14 @@ class SubmissionService:
         update_data = SubmissionUpdateDto(status=SubmissionStatus.COMPLETED)
         submission = self.repository.update(submission.id, update_data)
 
-        # Run similarity detection against other submissions in the same project step
-        similarity_ids = []
+        # Start similarity detection asynchronously (non-blocking)
         try:
-            logger.info(f"Starting similarity detection for submission {submission.id}")
-            similarity_ids = self.detection_service.process_submission_similarities(submission)
-            logger.info(f"Similarity detection completed for submission {submission.id}. "
-                        f"Created {len(similarity_ids)} similarity records.")
+            logger.info(f"Starting async similarity detection for submission {submission.id}")
+            self.detection_service.process_submission_similarities_async(submission)
+            logger.info(f"Async similarity detection initiated for submission {submission.id}")
         except Exception as e:
-            logger.error(f"Similarity detection failed for submission {submission.id}: {str(e)}")
-            # Don't fail the submission creation if similarity detection fails
-            # This allows submissions to be created even if detection has issues
+            logger.error(f"Failed to start async similarity detection for submission {submission.id}: {str(e)}")
+            # Log the error but don't fail the submission creation, it should be logged in the similarity entity either way
 
         # Add rule execution results to the response if any were executed
         response_data = {
@@ -159,19 +156,11 @@ class SubmissionService:
             "data": SubmissionResponseDto.model_validate(submission.model_dump()),
         }
 
-        # Add similarity detection metadata if available
-        if similarity_ids:
-            response_data["similarity_detection"] = {
-                "status": "completed",
-                "comparisons_created": len(similarity_ids),
-                "similarity_ids": similarity_ids,
-                "message": f"Similarity detection completed. {len(similarity_ids)} comparisons created."
-            }
-        else:
-            response_data["similarity_detection"] = {
-                "status": "no_comparisons",
-                "message": "No other submissions found for comparison or similarity detection failed."
-            }
+        # Add similarity detection metadata
+        response_data["similarity_detection"] = {
+            "status": "processing_async",
+            "message": "Similarity detection has been started in the background. Results will be available shortly."
+        }
 
         # Include rule results from execution or from stored submission
         if rule_results:
