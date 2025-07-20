@@ -588,7 +588,7 @@ class VisualizationService:
                     "source": file1_func_id,
                     "target": file2_func_id,
                     "animated": True,
-                    "type": "bezier", 
+                    "type": "default",
                     "data": {
                         "type": "similarity",
                         "similarity_score": block.get('similarity_score', 0.8)

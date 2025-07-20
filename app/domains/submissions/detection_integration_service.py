@@ -1,5 +1,7 @@
 import logging
 import time
+import threading
+from concurrent.futures import ThreadPoolExecutor
 from typing import List, Optional, Dict, Any
 from uuid import UUID
 from pathlib import Path
@@ -31,6 +33,248 @@ class DetectionIntegrationService:
         self.similarity_service = SimilarityDetectionService()
         self.visualization_service = VisualizationService(self.tokenization_service)
         self.submission_fetcher = SubmissionFetcher()
+        
+        # Create thread pool with limited workers to prevent server overload
+        self.similarity_executor = ThreadPoolExecutor(
+            max_workers=2, 
+            thread_name_prefix="similarity"
+        )
+        
+        # Thread-local storage for database sessions
+        self._local = threading.local()
+
+    def _get_thread_session(self) -> Session:
+        """Get thread-local database session"""
+        if not hasattr(self._local, 'session'):
+            from app.shared.database import get_session
+            self._local.session = next(get_session())
+        return self._local.session
+
+    def process_submission_similarities_async(self, submission: Submission) -> None:
+        """
+        Process similarity detection asynchronously - doesn't block submission creation
+        """
+        try:
+            # Get all other submissions in the same project step
+            other_submissions = self.submission_repository.get_by_project_step(
+                submission.project_uuid, submission.project_step_uuid
+            )
+            
+            # Filter out the current submission and get only completed ones
+            other_submissions = [
+                s for s in other_submissions 
+                if s.id != submission.id and s.group_uuid != submission.group_uuid
+            ]
+            
+            if not other_submissions:
+                logger.info(f"No other submissions found for comparison with submission {submission.id}")
+                return
+            
+            # Submit all comparisons to thread pool (fire and forget)
+            for other_submission in other_submissions:
+                self.similarity_executor.submit(
+                    self._process_single_comparison_threaded,
+                    submission.id,
+                    other_submission.id,
+                    submission.project_uuid,
+                    submission.project_step_uuid
+                )
+            
+            logger.info(f"Started async similarity processing for submission {submission.id} "
+                       f"against {len(other_submissions)} other submissions")
+            
+        except Exception as e:
+            logger.error(f"Failed to start async similarity processing: {str(e)}")
+
+    def _process_single_comparison_threaded(
+        self,
+        submission1_id: UUID,
+        submission2_id: UUID,
+        project_uuid: UUID,
+        project_step_uuid: UUID
+    ) -> None:
+        """Process a single comparison in a thread with its own database session"""
+        try:
+            # Get thread-local session and repositories
+            thread_session = self._get_thread_session()
+            thread_submission_repo = SubmissionRepository(thread_session)
+            thread_similarity_repo = SubmissionSimilarityRepository(thread_session)
+            
+            # Get submissions
+            submission1 = thread_submission_repo.get_by_id(submission1_id)
+            submission2 = thread_submission_repo.get_by_id(submission2_id)
+            
+            if not submission1 or not submission2:
+                logger.error(f"Submissions not found: {submission1_id}, {submission2_id}")
+                return
+            
+            # Check if comparison already exists
+            if thread_similarity_repo.check_existing_comparison(submission1_id, submission2_id):
+                logger.info(f"Comparison already exists between {submission1_id} and {submission2_id}")
+                return
+            
+            # Create similarity record
+            similarity_record = thread_similarity_repo.create({
+                "submission_id": submission1_id,
+                "compared_submission_id": submission2_id,
+                "project_uuid": project_uuid,
+                "project_step_uuid": project_step_uuid,
+                "status": SimilarityStatus.PENDING
+            })
+            
+            # Process the comparison using existing logic
+            self._process_single_comparison_with_repos(
+                similarity_record, submission1, submission2, 
+                thread_submission_repo, thread_similarity_repo
+            )
+            
+            logger.info(f"Completed async comparison between {submission1_id} and {submission2_id}")
+            
+        except Exception as e:
+            logger.error(f"Failed async comparison between {submission1_id} and {submission2_id}: {str(e)}")
+
+    def _process_single_comparison_with_repos(
+        self,
+        similarity_record,
+        submission1: Submission,
+        submission2: Submission,
+        submission_repo: SubmissionRepository,
+        similarity_repo: SubmissionSimilarityRepository
+    ) -> None:
+        """Process comparison with provided repositories (for thread safety)"""
+        start_time = time.time()
+
+        try:
+            # Update status to processing
+            similarity_repo.update_status(
+                similarity_record.id, SimilarityStatus.PROCESSING
+            )
+
+            # Fetch both submissions
+            submission1_data = CreateSubmissionDto(
+                link=submission1.link,
+                project_uuid=submission1.project_uuid,
+                group_uuid=submission1.group_uuid,
+                project_step_uuid=submission1.project_step_uuid,
+                link_type=submission1.link_type
+            )
+
+            submission2_data = CreateSubmissionDto(
+                link=submission2.link,
+                project_uuid=submission2.project_uuid,
+                group_uuid=submission2.group_uuid,
+                project_step_uuid=submission2.project_step_uuid,
+                link_type=submission2.link_type
+            )
+
+            # Fetch repositories
+            repo1_path = None
+            repo2_path = None
+
+            try:
+                repo1_path = self.submission_fetcher.fetch_submission(submission1_data)
+                repo2_path = self.submission_fetcher.fetch_submission(submission2_data)
+
+                if not repo1_path.exists() or not repo2_path.exists():
+                    raise HTTPException(status_code=404, detail="Test projects not found")
+
+                # Tokenize all files
+                tokens1 = []
+                tokens2 = []
+
+                repo1_compatible_files = self.tokenization_service.extract_supported_files_from_directory(repo1_path)
+                repo2_compatible_files = self.tokenization_service.extract_supported_files_from_directory(repo2_path)
+
+                for file_path in repo1_compatible_files:
+                    if not file_path.is_file():
+                        continue
+                    content = self._read_file_with_encoding_detection(file_path)
+                    if content is not None:
+                        tokens = self.tokenization_service.tokenize(content, file_path)
+                        tokens1.extend(tokens)
+
+                for file_path in repo2_compatible_files:
+                    if not file_path.is_file():
+                        continue
+                    content = self._read_file_with_encoding_detection(file_path)
+                    if content is not None:
+                        tokens = self.tokenization_service.tokenize(content, file_path)
+                        tokens2.extend(tokens)
+
+                # Perform similarity analysis
+                similarity_result = self.similarity_service.compare_similarity(tokens1, tokens2)
+                
+                files_with_similarities_visualization = []
+
+                for file_path in repo1_compatible_files:
+                    content1 = self._read_file_with_encoding_detection(file_path)
+
+                    for file_path2 in repo2_compatible_files:
+                        content2 = self._read_file_with_encoding_detection(file_path2)
+
+                        if content1 is None or content2 is None:
+                            continue
+
+                        react_flow_data = self.visualization_service.generate_react_flow_ast(
+                            content1, content2,
+                            file_path.name, file_path2.name, "elk"
+                        )
+
+                        if react_flow_data.get('has_similarity', False):
+                            files_with_similarities_visualization.append({
+                                "file_pair": {
+                                    "file_from_submission1": f"{file_path.name}",
+                                    "file_from_submission2": f"{file_path2.name}"
+                                },
+                                "react_flow": react_flow_data
+                            })
+
+                # Sort by similarity
+                files_with_similarities_visualization.sort(
+                    key=lambda x: x['react_flow'].get('analysis_metadata', {}).get('average_similarity', 0.0),
+                    reverse=True
+                )
+
+                # Prepare results
+                processing_time = time.time() - start_time
+
+                results = {
+                    "jaccard_similarity": similarity_result['jaccard_similarity'],
+                    "type_similarity": similarity_result['type_similarity'],
+                    "processing_time_seconds": processing_time,
+                    "similarity_details": {
+                        "algorithm": "ast_similarity",
+                        "common_elements": similarity_result['common_elements'],
+                        "total_unique_elements": similarity_result['total_unique_elements'],
+                        "tokens_count": {
+                            "submission1": len(tokens1),
+                            "submission2": len(tokens2)
+                        },
+                        "files_count": {
+                            "submission1": len(repo1_compatible_files),
+                            "submission2": len(repo2_compatible_files)
+                        }
+                    },
+                    "visualization_data": files_with_similarities_visualization
+                }
+
+                # Update the similarity record with results
+                similarity_repo.update_results(similarity_record.id, results)
+
+            finally:
+                # Clean up temporary directories
+                if repo1_path and repo1_path.exists():
+                    cleanup_temp_directory(repo1_path)
+                if repo2_path and repo2_path.exists():
+                    cleanup_temp_directory(repo2_path)
+
+        except Exception as e:
+            # Update status to failed
+            similarity_repo.update_status(
+                similarity_record.id, SimilarityStatus.FAILED, str(e)
+            )
+            logger.error(f"Failed to process comparison: {str(e)}")
+            raise
 
     def process_submission_similarities(self, submission: Submission) -> List[str]:
         """
