@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class CacheEntry:
     """Cache entry with metadata for tracking access patterns"""
+
     value: Any
     size: int
     created_at: float
@@ -30,6 +31,7 @@ class CacheEntry:
 @dataclass
 class CacheStats:
     """Cache statistics"""
+
     hot_hits: int = 0
     cold_hits: int = 0
     misses: int = 0
@@ -65,15 +67,17 @@ class CustomCache:
     Features batch promotion/demotion for efficiency and thread safety.
     """
 
-    def __init__(self,
-                 hot_max_memory_mb: int = 300,
-                 cold_db_path: str = "/tmp/custom_cache",
-                 hot_threshold_percent: float = 80.0,
-                 batch_size: int = 50,
-                 cold_max_size_gb: int = 10):
+    def __init__(
+        self,
+        hot_max_memory_mb: int = 300,
+        cold_db_path: str = "/tmp/custom_cache",
+        hot_threshold_percent: float = 80.0,
+        batch_size: int = 50,
+        cold_max_size_gb: int = 10,
+    ):
         """
         Initialize the custom cache system.
-        
+
         Args:
             hot_max_memory_mb: Maximum memory for hot cache in MB
             cold_db_path: Path to LMDB database for cold storage
@@ -114,12 +118,12 @@ class CustomCache:
                 max_dbs=1,
                 sync=False,  # Async writes for performance
                 writemap=True,  # Use writemap for better performance
-                lock=True  # Enable locking for thread safety
+                lock=True,  # Enable locking for thread safety
             )
 
             # Create main database
             with self._lmdb_env.begin(write=True) as txn:
-                self._cold_db = self._lmdb_env.open_db(b'cache', txn=txn, create=True)
+                self._cold_db = self._lmdb_env.open_db(b"cache", txn=txn, create=True)
 
             logger.info(f"LMDB cold storage initialized at {self.cold_db_path}")
 
@@ -145,13 +149,10 @@ class CustomCache:
     def _select_demotion_candidates(self) -> List[str]:
         """Select items for demotion using LRU strategy"""
         # Sort by last accessed time (oldest first)
-        candidates = sorted(
-            self._hot_cache.items(),
-            key=lambda x: x[1].last_accessed
-        )
+        candidates = sorted(self._hot_cache.items(), key=lambda x: x[1].last_accessed)
 
         # Select batch_size oldest items
-        return [key for key, _ in candidates[:self.batch_size]]
+        return [key for key, _ in candidates[: self.batch_size]]
 
     def _select_promotion_candidates(self) -> List[str]:
         """Select items for promotion from cold storage based on access patterns"""
@@ -166,8 +167,8 @@ class CustomCache:
                 for key, value in cursor:
                     try:
                         entry_data = pickle.loads(value)
-                        if isinstance(entry_data, dict) and 'access_count' in entry_data:
-                            items_with_access.append((key.decode('utf-8'), entry_data['access_count']))
+                        if isinstance(entry_data, dict) and "access_count" in entry_data:
+                            items_with_access.append((key.decode("utf-8"), entry_data["access_count"]))
                     except Exception:
                         continue
 
@@ -175,7 +176,7 @@ class CustomCache:
                 items_with_access.sort(key=lambda x: x[1], reverse=True)
 
                 # Select top candidates up to batch_size
-                candidates = [key for key, _ in items_with_access[:self.batch_size]]
+                candidates = [key for key, _ in items_with_access[: self.batch_size]]
 
         except Exception as e:
             logger.warning(f"Failed to select promotion candidates: {e}")
@@ -195,15 +196,15 @@ class CustomCache:
 
                         # Prepare data for cold storage with metadata
                         cold_data = {
-                            'value': entry.value,
-                            'created_at': entry.created_at,
-                            'last_accessed': entry.last_accessed,
-                            'access_count': entry.access_count
+                            "value": entry.value,
+                            "created_at": entry.created_at,
+                            "last_accessed": entry.last_accessed,
+                            "access_count": entry.access_count,
                         }
 
                         # Store in cold cache
                         serialized_data = pickle.dumps(cold_data, protocol=pickle.HIGHEST_PROTOCOL)
-                        txn.put(key.encode('utf-8'), serialized_data, db=self._cold_db)
+                        txn.put(key.encode("utf-8"), serialized_data, db=self._cold_db)
 
                         # Remove from hot cache
                         self._hot_memory_usage -= entry.size
@@ -231,7 +232,7 @@ class CustomCache:
 
                 for key in keys:
                     # Check if item exists in cold storage
-                    cold_data_bytes = txn.get(key.encode('utf-8'), db=self._cold_db)
+                    cold_data_bytes = txn.get(key.encode("utf-8"), db=self._cold_db)
                     if cold_data_bytes is None:
                         continue
 
@@ -239,17 +240,17 @@ class CustomCache:
                         cold_data = pickle.loads(cold_data_bytes)
 
                         # Estimate size and check if we have space
-                        estimated_size = self._estimate_size(cold_data['value'])
+                        estimated_size = self._estimate_size(cold_data["value"])
                         if estimated_size > available_space:
                             break  # No more space
 
                         # Create hot cache entry
                         entry = CacheEntry(
-                            value=cold_data['value'],
+                            value=cold_data["value"],
                             size=estimated_size,
-                            created_at=cold_data['created_at'],
-                            last_accessed=cold_data['last_accessed'],
-                            access_count=cold_data['access_count']
+                            created_at=cold_data["created_at"],
+                            last_accessed=cold_data["last_accessed"],
+                            access_count=cold_data["access_count"],
                         )
 
                         # Add to hot cache
@@ -258,7 +259,7 @@ class CustomCache:
                         available_space -= estimated_size
 
                         # Remove from cold storage
-                        txn.delete(key.encode('utf-8'), db=self._cold_db)
+                        txn.delete(key.encode("utf-8"), db=self._cold_db)
 
                         promoted_count += 1
 
@@ -295,22 +296,22 @@ class CustomCache:
             # Check cold cache
             try:
                 with self._lmdb_env.begin(write=False) as txn:
-                    cold_data_bytes = txn.get(key.encode('utf-8'), db=self._cold_db)
+                    cold_data_bytes = txn.get(key.encode("utf-8"), db=self._cold_db)
 
                     if cold_data_bytes is not None:
                         cold_data = pickle.loads(cold_data_bytes)
                         self._stats.cold_hits += 1
 
                         # Update cold storage access count
-                        cold_data['last_accessed'] = time.time()
-                        cold_data['access_count'] += 1
+                        cold_data["last_accessed"] = time.time()
+                        cold_data["access_count"] += 1
 
                         # Store updated metadata back to cold storage
                         updated_data = pickle.dumps(cold_data, protocol=pickle.HIGHEST_PROTOCOL)
                         with self._lmdb_env.begin(write=True) as write_txn:
-                            write_txn.put(key.encode('utf-8'), updated_data, db=self._cold_db)
+                            write_txn.put(key.encode("utf-8"), updated_data, db=self._cold_db)
 
-                        return cold_data['value']
+                        return cold_data["value"]
 
             except Exception as e:
                 logger.warning(f"Error accessing cold cache for key {key}: {e}")
@@ -347,19 +348,19 @@ class CustomCache:
                 try:
                     with self._lmdb_env.begin(write=True) as txn:
                         for key in cold_keys:
-                            cold_data_bytes = txn.get(key.encode('utf-8'), db=self._cold_db)
+                            cold_data_bytes = txn.get(key.encode("utf-8"), db=self._cold_db)
 
                             if cold_data_bytes is not None:
                                 cold_data = pickle.loads(cold_data_bytes)
-                                results[key] = cold_data['value']
+                                results[key] = cold_data["value"]
                                 self._stats.cold_hits += 1
 
                                 # Update access metadata
-                                cold_data['last_accessed'] = time.time()
-                                cold_data['access_count'] += 1
+                                cold_data["last_accessed"] = time.time()
+                                cold_data["access_count"] += 1
 
                                 updated_data = pickle.dumps(cold_data, protocol=pickle.HIGHEST_PROTOCOL)
-                                txn.put(key.encode('utf-8'), updated_data, db=self._cold_db)
+                                txn.put(key.encode("utf-8"), updated_data, db=self._cold_db)
                             else:
                                 self._stats.misses += 1
 
@@ -398,11 +399,7 @@ class CustomCache:
 
             # Create new entry
             entry = CacheEntry(
-                value=value,
-                size=estimated_size,
-                created_at=time.time(),
-                last_accessed=time.time(),
-                access_count=1
+                value=value, size=estimated_size, created_at=time.time(), last_accessed=time.time(), access_count=1
             )
 
             # Add to hot cache
@@ -441,7 +438,7 @@ class CustomCache:
             # Remove from cold cache
             try:
                 with self._lmdb_env.begin(write=True) as txn:
-                    if txn.delete(key.encode('utf-8'), db=self._cold_db):
+                    if txn.delete(key.encode("utf-8"), db=self._cold_db):
                         found = True
             except Exception as e:
                 logger.warning(f"Error deleting from cold cache: {e}")
@@ -490,7 +487,7 @@ class CustomCache:
             # Count cold cache size
             try:
                 with self._lmdb_env.begin(write=False) as txn:
-                    self._stats.cold_size = txn.stat(self._cold_db)['entries']
+                    self._stats.cold_size = txn.stat(self._cold_db)["entries"]
             except Exception:
                 self._stats.cold_size = 0
 
@@ -501,39 +498,39 @@ class CustomCache:
         stats = self.get_stats()
 
         return {
-            'configuration': {
-                'hot_max_memory_mb': self.hot_max_memory_bytes // (1024 * 1024),
-                'cold_db_path': str(self.cold_db_path),
-                'hot_threshold_percent': self.hot_threshold_percent,
-                'batch_size': self.batch_size
+            "configuration": {
+                "hot_max_memory_mb": self.hot_max_memory_bytes // (1024 * 1024),
+                "cold_db_path": str(self.cold_db_path),
+                "hot_threshold_percent": self.hot_threshold_percent,
+                "batch_size": self.batch_size,
             },
-            'performance': {
-                'hit_rate': stats.hit_rate,
-                'hot_hit_rate': stats.hot_hit_rate,
-                'memory_utilization': stats.memory_utilization
+            "performance": {
+                "hit_rate": stats.hit_rate,
+                "hot_hit_rate": stats.hot_hit_rate,
+                "memory_utilization": stats.memory_utilization,
             },
-            'statistics': {
-                'hot_hits': stats.hot_hits,
-                'cold_hits': stats.cold_hits,
-                'misses': stats.misses,
-                'total_requests': stats.total_requests,
-                'promotions': stats.promotions,
-                'demotions': stats.demotions,
-                'batch_operations': stats.batch_operations
+            "statistics": {
+                "hot_hits": stats.hot_hits,
+                "cold_hits": stats.cold_hits,
+                "misses": stats.misses,
+                "total_requests": stats.total_requests,
+                "promotions": stats.promotions,
+                "demotions": stats.demotions,
+                "batch_operations": stats.batch_operations,
             },
-            'storage': {
-                'hot_cache_size': stats.hot_size,
-                'cold_cache_size': stats.cold_size,
-                'hot_memory_bytes': stats.hot_memory_bytes,
-                'hot_max_memory_bytes': stats.hot_max_memory_bytes
-            }
+            "storage": {
+                "hot_cache_size": stats.hot_size,
+                "cold_cache_size": stats.cold_size,
+                "hot_memory_bytes": stats.hot_memory_bytes,
+                "hot_max_memory_bytes": stats.hot_max_memory_bytes,
+            },
         }
 
     def close(self) -> None:
         """Close the cache and cleanup resources"""
         with self._lock:
             try:
-                if hasattr(self, '_lmdb_env'):
+                if hasattr(self, "_lmdb_env"):
                     self._lmdb_env.close()
                 logger.info("CustomCache closed successfully")
             except Exception as e:

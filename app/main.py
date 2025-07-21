@@ -6,40 +6,42 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config.config import get_settings
+from app.domains.detection.router import router as detection_router
 
 # Import domain routers
 from app.domains.health.router import router as health_router
 from app.domains.submissions.submissions_controller import router as submissions_router
-from app.domains.detection.router import router as detection_router
 from app.shared.database import create_db_and_tables
 
 settings = get_settings()
+
 
 # Configure logging
 def setup_logging():
     """Configure logging for the application"""
     log_level = logging.DEBUG if settings.debug else logging.INFO
-    
+
     # Configure the root logger
     logging.basicConfig(
         level=log_level,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         handlers=[
             logging.StreamHandler(sys.stdout),
-            logging.FileHandler('app.log') if not settings.debug else logging.NullHandler()
-        ]
+            logging.FileHandler("app.log") if not settings.debug else logging.NullHandler(),
+        ],
     )
-    
+
     # Set specific loggers to appropriate levels
-    logging.getLogger('uvicorn').setLevel(logging.INFO)
-    logging.getLogger('uvicorn.access').setLevel(logging.INFO)
-    logging.getLogger('fastapi').setLevel(logging.INFO)
-    
+    logging.getLogger("uvicorn").setLevel(logging.INFO)
+    logging.getLogger("uvicorn.access").setLevel(logging.INFO)
+    logging.getLogger("fastapi").setLevel(logging.INFO)
+
     # Create and configure the main application logger
-    logger = logging.getLogger('app')
+    logger = logging.getLogger("app")
     logger.setLevel(log_level)
-    
+
     return logger
+
 
 # Setup logging
 logger = setup_logging()
@@ -95,18 +97,14 @@ async def root():
     logger.debug("Debug message from root endpoint")
     logger.warning("Warning message from root endpoint")
     logger.error("Error message from root endpoint")
-    
+
     return {
         "message": f"Welcome to {settings.app_name}",
         "version": settings.app_version,
         "architecture": "Clean Architecture with Domain-Driven Design",
         "swagger": "/swagger-ui",
         "health": "/health",
-        "domains": {
-            "health": "/health", 
-            "submissions": "/submissions",
-            "detection": "/detection"
-        },
+        "domains": {"health": "/health", "submissions": "/submissions", "detection": "/detection"},
     }
 
 

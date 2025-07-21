@@ -5,7 +5,7 @@ from uuid import UUID, uuid4
 
 import pytz
 from pydantic import field_validator
-from sqlmodel import Field, SQLModel, JSON, Column
+from sqlmodel import JSON, Column, Field, SQLModel
 
 # Paris timezone
 PARIS_TZ = pytz.timezone("Europe/Paris")
@@ -103,38 +103,48 @@ class SubmissionSimilarity(SQLModel, table=True):
     __tablename__ = "submission_similarity"
 
     id: Optional[UUID] = Field(default_factory=uuid4, primary_key=True)
-    
+
     # Submission references
     submission_id: UUID = Field(foreign_key="submission.id", description="ID of the submission being compared")
-    compared_submission_id: UUID = Field(foreign_key="submission.id", description="ID of the submission being compared against")
-    
+    compared_submission_id: UUID = Field(
+        foreign_key="submission.id", description="ID of the submission being compared against"
+    )
+
     # Project context
     project_uuid: UUID = Field(description="UUID of the associated project")
     project_step_uuid: UUID = Field(description="UUID of the project step")
-    
+
     # Similarity metrics
     jaccard_similarity: float = Field(default=0.0, description="Jaccard similarity score (0.0 to 1.0)")
     type_similarity: float = Field(default=0.0, description="Type similarity score (0.0 to 1.0)")
     overall_similarity: float = Field(default=0.0, description="Overall similarity score (0.0 to 1.0)")
-    
+
     # Shared code analysis
     shared_blocks_count: int = Field(default=0, description="Number of shared code blocks detected")
     average_shared_similarity: float = Field(default=0.0, description="Average similarity of shared code blocks")
-    
+
     # Detection metadata
     detection_algorithm: str = Field(default="ast_similarity_v2", description="Algorithm used for detection")
     detection_version: str = Field(default="2.1.0", description="Version of the detection system")
-    
+
     # Detailed results (stored as JSON)
-    similarity_details: Optional[dict] = Field(default=None, sa_column=Column(JSON), description="Detailed similarity analysis results")
-    shared_blocks: Optional[dict] = Field(default=None, sa_column=Column(JSON), description="Detailed shared code blocks information")
-    visualization_data: Optional[dict] = Field(default=None, sa_column=Column(JSON), description="React Flow visualization data")
-    
+    similarity_details: Optional[dict] = Field(
+        default=None, sa_column=Column(JSON), description="Detailed similarity analysis results"
+    )
+    shared_blocks: Optional[dict] = Field(
+        default=None, sa_column=Column(JSON), description="Detailed shared code blocks information"
+    )
+    visualization_data: Optional[dict] = Field(
+        default=None, sa_column=Column(JSON), description="React Flow visualization data"
+    )
+
     # Status and timing
     status: SimilarityStatus = Field(default=SimilarityStatus.PENDING, description="Status of the similarity detection")
     created_at: datetime = Field(default_factory=get_paris_time, description="When the similarity analysis was created")
     updated_at: Optional[datetime] = Field(default=None, description="When the similarity analysis was last updated")
-    processing_time_seconds: Optional[float] = Field(default=None, description="Time taken to process the similarity analysis")
-    
+    processing_time_seconds: Optional[float] = Field(
+        default=None, description="Time taken to process the similarity analysis"
+    )
+
     # Error handling
     error_message: Optional[str] = Field(default=None, description="Error message if similarity detection failed")

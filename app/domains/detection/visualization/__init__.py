@@ -4,4 +4,4 @@ Visualization package for React Flow AST generation and code similarity visualiz
 
 from .visualization_service import VisualizationService
 
-__all__ = ['VisualizationService'] 
+__all__ = ["VisualizationService"]

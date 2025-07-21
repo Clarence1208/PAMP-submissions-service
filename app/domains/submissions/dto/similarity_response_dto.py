@@ -9,7 +9,7 @@ from app.domains.submissions.submissions_models import SimilarityStatus
 
 class SimilarityMetricsDto(BaseModel):
     """DTO for similarity metrics"""
-    
+
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
@@ -17,11 +17,11 @@ class SimilarityMetricsDto(BaseModel):
                 "jaccard_similarity": 0.78,
                 "type_similarity": 0.92,
                 "shared_blocks_count": 5,
-                "average_shared_similarity": 0.87
+                "average_shared_similarity": 0.87,
             }
         }
     )
-    
+
     overall_similarity: float
     jaccard_similarity: float
     type_similarity: float
@@ -31,7 +31,7 @@ class SimilarityMetricsDto(BaseModel):
 
 class SubmissionSummaryDto(BaseModel):
     """DTO for submission summary in similarity results"""
-    
+
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
@@ -39,11 +39,11 @@ class SubmissionSummaryDto(BaseModel):
                 "link": "https://github.com/user/repository.git",
                 "description": "Student submission for assignment 1",
                 "submitted_by_uuid": "550e8400-e29b-41d4-a716-446655440005",
-                "upload_date_time": "2024-01-15T10:30:00Z"
+                "upload_date_time": "2024-01-15T10:30:00Z",
             }
         }
     )
-    
+
     id: UUID
     link: str
     description: Optional[str]
@@ -53,7 +53,7 @@ class SubmissionSummaryDto(BaseModel):
 
 class SimilarityResponseDto(BaseModel):
     """DTO for similarity detection results"""
-    
+
     model_config = ConfigDict(
         use_enum_values=True,
         json_schema_extra={
@@ -69,11 +69,11 @@ class SimilarityResponseDto(BaseModel):
                 "status": "completed",
                 "created_at": "2024-01-15T10:30:00Z",
                 "processing_time_seconds": 12.5,
-                "error_message": None
+                "error_message": None,
             }
-        }
+        },
     )
-    
+
     similarity_id: UUID
     compared_submission_id: UUID
     compared_submission_link: Optional[str]
@@ -90,7 +90,7 @@ class SimilarityResponseDto(BaseModel):
 
 class DetailedComparisonDto(BaseModel):
     """DTO for detailed comparison results"""
-    
+
     model_config = ConfigDict(
         use_enum_values=True,
         json_schema_extra={
@@ -102,22 +102,22 @@ class DetailedComparisonDto(BaseModel):
                         "link": "https://github.com/user/repo1.git",
                         "description": "First submission",
                         "submitted_by_uuid": "550e8400-e29b-41d4-a716-446655440005",
-                        "upload_date_time": "2024-01-15T10:30:00Z"
+                        "upload_date_time": "2024-01-15T10:30:00Z",
                     },
                     "submission2": {
                         "id": "550e8400-e29b-41d4-a716-446655440002",
                         "link": "https://github.com/user/repo2.git",
                         "description": "Second submission",
                         "submitted_by_uuid": "550e8400-e29b-41d4-a716-446655440006",
-                        "upload_date_time": "2024-01-15T11:00:00Z"
-                    }
+                        "upload_date_time": "2024-01-15T11:00:00Z",
+                    },
                 },
                 "similarity_metrics": {
                     "overall_similarity": 0.85,
                     "jaccard_similarity": 0.78,
                     "type_similarity": 0.92,
                     "shared_blocks_count": 5,
-                    "average_shared_similarity": 0.87
+                    "average_shared_similarity": 0.87,
                 },
                 "analysis_metadata": {
                     "detection_algorithm": "ast_similarity_v2",
@@ -126,12 +126,12 @@ class DetailedComparisonDto(BaseModel):
                     "created_at": "2024-01-15T10:30:00Z",
                     "updated_at": "2024-01-15T10:32:00Z",
                     "processing_time_seconds": 12.5,
-                    "error_message": None
-                }
+                    "error_message": None,
+                },
             }
-        }
+        },
     )
-    
+
     similarity_id: UUID
     submissions: Dict[str, SubmissionSummaryDto]
     similarity_metrics: SimilarityMetricsDto
@@ -141,7 +141,7 @@ class DetailedComparisonDto(BaseModel):
 
 class SimilarityAlertDto(BaseModel):
     """DTO for high similarity alerts"""
-    
+
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
@@ -152,19 +152,19 @@ class SimilarityAlertDto(BaseModel):
                     "id": "550e8400-e29b-41d4-a716-446655440001",
                     "link": "https://github.com/user/repo1.git",
                     "submitted_by_uuid": "550e8400-e29b-41d4-a716-446655440005",
-                    "upload_date_time": "2024-01-15T10:30:00Z"
+                    "upload_date_time": "2024-01-15T10:30:00Z",
                 },
                 "submission2": {
                     "id": "550e8400-e29b-41d4-a716-446655440002",
                     "link": "https://github.com/user/repo2.git",
                     "submitted_by_uuid": "550e8400-e29b-41d4-a716-446655440006",
-                    "upload_date_time": "2024-01-15T11:00:00Z"
+                    "upload_date_time": "2024-01-15T11:00:00Z",
                 },
-                "detected_at": "2024-01-15T10:32:00Z"
+                "detected_at": "2024-01-15T10:32:00Z",
             }
         }
     )
-    
+
     similarity_id: UUID
     overall_similarity: float
     shared_blocks_count: int
@@ -175,7 +175,7 @@ class SimilarityAlertDto(BaseModel):
 
 class SimilarityStatisticsDto(BaseModel):
     """DTO for similarity statistics"""
-    
+
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
@@ -183,15 +183,11 @@ class SimilarityStatisticsDto(BaseModel):
                 "high_similarity_pairs": 3,
                 "average_similarity": 0.245,
                 "max_similarity": 0.87,
-                "status_breakdown": {
-                    "completed": 20,
-                    "failed": 3,
-                    "processing": 2
-                }
+                "status_breakdown": {"completed": 20, "failed": 3, "processing": 2},
             }
         }
     )
-    
+
     total_comparisons: int
     high_similarity_pairs: int
     average_similarity: float
@@ -201,7 +197,7 @@ class SimilarityStatisticsDto(BaseModel):
 
 class SimilarityListResponseDto(BaseModel):
     """DTO for list of similarity results"""
-    
+
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
@@ -221,13 +217,13 @@ class SimilarityListResponseDto(BaseModel):
                         "status": "completed",
                         "created_at": "2024-01-15T10:30:00Z",
                         "processing_time_seconds": 12.5,
-                        "error_message": None
+                        "error_message": None,
                     }
-                ]
+                ],
             }
         }
     )
-    
+
     submission_id: UUID
     total_comparisons: int
     high_similarity_count: int
@@ -236,7 +232,7 @@ class SimilarityListResponseDto(BaseModel):
 
 class SimilarityAlertsResponseDto(BaseModel):
     """DTO for similarity alerts response"""
-    
+
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
@@ -253,23 +249,23 @@ class SimilarityAlertsResponseDto(BaseModel):
                             "id": "550e8400-e29b-41d4-a716-446655440003",
                             "link": "https://github.com/user/repo1.git",
                             "submitted_by_uuid": "550e8400-e29b-41d4-a716-446655440005",
-                            "upload_date_time": "2024-01-15T10:30:00Z"
+                            "upload_date_time": "2024-01-15T10:30:00Z",
                         },
                         "submission2": {
                             "id": "550e8400-e29b-41d4-a716-446655440004",
                             "link": "https://github.com/user/repo2.git",
                             "submitted_by_uuid": "550e8400-e29b-41d4-a716-446655440006",
-                            "upload_date_time": "2024-01-15T11:00:00Z"
+                            "upload_date_time": "2024-01-15T11:00:00Z",
                         },
-                        "detected_at": "2024-01-15T10:32:00Z"
+                        "detected_at": "2024-01-15T10:32:00Z",
                     }
-                ]
+                ],
             }
         }
     )
-    
+
     project_uuid: UUID
     project_step_uuid: UUID
     similarity_threshold: float
     total_alerts: int
-    alerts: List[SimilarityAlertDto] 
+    alerts: List[SimilarityAlertDto]
