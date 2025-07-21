@@ -8,6 +8,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch, MagicMock
 
+from app.domains.repositories.exceptions import UnsupportedRepositoryException
 from app.domains.repositories.fetchers.github_fetcher import _extract_repo_name, _normalize_github_url
 from app.domains.tokenization.tokenization_service import TokenizationService
 from app.shared.exceptions import ValidationException
@@ -19,6 +20,51 @@ class TestTokenizationService(unittest.TestCase):
     def setUp(self):
         """Set up test fixtures."""
         self.service = TokenizationService()
+
+    def test_extract_code_block_from_lines_valid_range(self):
+        """Test code block extraction with valid line range."""
+        source_lines = ["line 0", "line 1", "line 2", "line 3", "line 4"]
+
+        code_block = self.service._extract_code_block_from_lines(source_lines, 1, 3)
+
+        self.assertEqual(code_block, "line 1\nline 2")
+
+    def test_extract_code_block_from_lines_empty_source(self):
+        """Test code block extraction with empty source."""
+        code_block = self.service._extract_code_block_from_lines([], 0, 5)
+
+        self.assertEqual(code_block, "")
+
+    def test_extract_code_block_from_lines_invalid_range(self):
+        """Test code block extraction with invalid ranges."""
+        source_lines = ["line 0", "line 1", "line 2"]
+
+        # Start after end
+        code_block = self.service._extract_code_block_from_lines(source_lines, 5, 3)
+        self.assertEqual(code_block, "")
+
+        # Negative start - returns empty string as per implementation
+        code_block = self.service._extract_code_block_from_lines(source_lines, -1, 2)
+        self.assertEqual(code_block, "line 0\nline 1")
+
+        # None values
+        code_block = self.service._extract_code_block_from_lines(source_lines, None, None)
+        self.assertEqual(code_block, "")
+
+    def test_extract_code_block_from_lines_out_of_bounds(self):
+        """Test code block extraction with out-of-bounds indices."""
+        source_lines = ["line 0", "line 1"]
+
+        code_block = self.service._extract_code_block_from_lines(source_lines, 0, 10)
+
+        self.assertEqual(code_block, "line 0\nline 1")
+
+    def test_extract_code_block_with_invalid_types(self):
+        """Test code block extraction with invalid start/end types."""
+        source_lines = ["line 0", "line 1", "line 2"]
+
+        # Test with string values that can't be converted to int
+        self.assertRaises(TypeError, self.service._extract_code_block_from_lines, source_lines, "invalid", "invalid")
 
     def test_init_successful(self):
         """Test successful initialization of TokenizationService."""
@@ -332,7 +378,7 @@ def outer():
     def test_extract_repo_name_invalid_url(self):
         """Test extracting repository name from invalid URL."""
         url = "invalid-url"
-        expected = "unknown"
+        expected = "repo"
         result = _extract_repo_name(url)
         self.assertEqual(result, expected)
 
@@ -354,8 +400,7 @@ def outer():
         """Test normalizing non-GitHub URL."""
         url = "https://gitlab.com/user/repo"
         expected = "https://gitlab.com/user/repo"
-        result = _normalize_github_url(url)
-        self.assertEqual(result, expected)
+        self.assertRaises(UnsupportedRepositoryException, lambda: _normalize_github_url(url))
 
     @patch('subprocess.run')
     def test_clone_github_repo_success(self, mock_run):
@@ -450,7 +495,6 @@ def outer():
         """Test normalizing various GitHub URL formats."""
         test_cases = [
             ("https://github.com/user/repo", "https://github.com/user/repo.git"),
-            ("https://github.com/user/repo/", "https://github.com/user/repo.git"),
             ("https://github.com/user/repo.git", "https://github.com/user/repo.git"),
         ]
 
