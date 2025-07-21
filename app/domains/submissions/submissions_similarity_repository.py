@@ -6,7 +6,7 @@ from uuid import UUID
 from sqlalchemy import or_
 from sqlmodel import Session, select
 
-from app.domains.submissions.submissions_models import SubmissionSimilarity, SimilarityStatus
+from app.domains.submissions.submissions_models import SimilarityStatus, SubmissionSimilarity
 from app.shared.exceptions import DatabaseException, NotFoundException
 
 
@@ -55,7 +55,7 @@ class SubmissionSimilarityRepository:
                 select(SubmissionSimilarity)
                 .where(
                     SubmissionSimilarity.project_uuid == project_uuid,
-                    SubmissionSimilarity.project_step_uuid == project_step_uuid
+                    SubmissionSimilarity.project_step_uuid == project_step_uuid,
                 )
                 .order_by(SubmissionSimilarity.overall_similarity.desc())
             )
@@ -64,10 +64,7 @@ class SubmissionSimilarityRepository:
             raise DatabaseException(f"Failed to get similarity records for project step: {str(e)}")
 
     def get_high_similarity_pairs(
-            self,
-            project_uuid: UUID,
-            project_step_uuid: UUID,
-            similarity_threshold: float = 0.7
+        self, project_uuid: UUID, project_step_uuid: UUID, similarity_threshold: float = 0.7
     ) -> List[SubmissionSimilarity]:
         """Get similarity pairs above a certain threshold for a project step"""
         try:
@@ -76,7 +73,7 @@ class SubmissionSimilarityRepository:
                 .where(
                     SubmissionSimilarity.project_uuid == project_uuid,
                     SubmissionSimilarity.project_step_uuid == project_step_uuid,
-                    SubmissionSimilarity.overall_similarity >= similarity_threshold
+                    SubmissionSimilarity.overall_similarity >= similarity_threshold,
                 )
                 .order_by(SubmissionSimilarity.overall_similarity.desc())
             )
@@ -84,26 +81,19 @@ class SubmissionSimilarityRepository:
         except Exception as e:
             raise DatabaseException(f"Failed to get high similarity pairs: {str(e)}")
 
-    def get_comparison_pair(
-            self,
-            submission_id: UUID,
-            compared_submission_id: UUID
-    ) -> Optional[SubmissionSimilarity]:
+    def get_comparison_pair(self, submission_id: UUID, compared_submission_id: UUID) -> Optional[SubmissionSimilarity]:
         """Get specific comparison between two submissions"""
         try:
             statement = select(SubmissionSimilarity).where(
                 SubmissionSimilarity.submission_id == submission_id,
-                SubmissionSimilarity.compared_submission_id == compared_submission_id
+                SubmissionSimilarity.compared_submission_id == compared_submission_id,
             )
             return self.session.exec(statement).first()
         except Exception as e:
             raise DatabaseException(f"Failed to get comparison pair: {str(e)}")
 
     def update_status(
-            self,
-            similarity_id: UUID,
-            status: SimilarityStatus,
-            error_message: Optional[str] = None
+        self, similarity_id: UUID, status: SimilarityStatus, error_message: Optional[str] = None
     ) -> SubmissionSimilarity:
         """Update the status of a similarity record"""
         try:
@@ -127,11 +117,7 @@ class SubmissionSimilarityRepository:
             self.session.rollback()
             raise DatabaseException(f"Failed to update similarity status: {str(e)}")
 
-    def update_results(
-            self,
-            similarity_id: UUID,
-            results: dict
-    ) -> SubmissionSimilarity:
+    def update_results(self, similarity_id: UUID, results: dict) -> SubmissionSimilarity:
         """Update similarity results"""
         try:
             similarity = self.get_by_id(similarity_id)
@@ -139,19 +125,19 @@ class SubmissionSimilarityRepository:
                 raise NotFoundException(f"Similarity record with ID {similarity_id} not found")
 
             # Update similarity metrics
-            similarity.jaccard_similarity = results.get('jaccard_similarity', 0.0)
-            similarity.type_similarity = results.get('type_similarity', 0.0)
-            similarity.overall_similarity = results.get('overall_similarity', 0.0)
-            similarity.shared_blocks_count = results.get('shared_blocks_count', 0)
-            similarity.average_shared_similarity = results.get('average_shared_similarity', 0.0)
+            similarity.jaccard_similarity = results.get("jaccard_similarity", 0.0)
+            similarity.type_similarity = results.get("type_similarity", 0.0)
+            similarity.overall_similarity = results.get("overall_similarity", 0.0)
+            similarity.shared_blocks_count = results.get("shared_blocks_count", 0)
+            similarity.average_shared_similarity = results.get("average_shared_similarity", 0.0)
 
             # Update detailed results
-            similarity.similarity_details = results.get('similarity_details')
-            similarity.shared_blocks = results.get('shared_blocks')
-            similarity.visualization_data = results.get('visualization_data')
+            similarity.similarity_details = results.get("similarity_details")
+            similarity.shared_blocks = results.get("shared_blocks")
+            similarity.visualization_data = results.get("visualization_data")
 
             # Update timing and status
-            similarity.processing_time_seconds = results.get('processing_time_seconds')
+            similarity.processing_time_seconds = results.get("processing_time_seconds")
             similarity.status = SimilarityStatus.COMPLETED
             similarity.updated_at = datetime.utcnow()
 
@@ -187,7 +173,7 @@ class SubmissionSimilarityRepository:
             statement = select(SubmissionSimilarity).where(
                 or_(
                     SubmissionSimilarity.submission_id == submission_id,
-                    SubmissionSimilarity.compared_submission_id == submission_id
+                    SubmissionSimilarity.compared_submission_id == submission_id,
                 )
             )
             similarities = list(self.session.exec(statement).all())
@@ -209,7 +195,7 @@ class SubmissionSimilarityRepository:
         try:
             statement = select(SubmissionSimilarity).where(
                 SubmissionSimilarity.project_uuid == project_uuid,
-                SubmissionSimilarity.project_step_uuid == project_step_uuid
+                SubmissionSimilarity.project_step_uuid == project_step_uuid,
             )
             similarities = list(self.session.exec(statement).all())
 
@@ -219,7 +205,7 @@ class SubmissionSimilarityRepository:
                     "high_similarity_pairs": 0,
                     "average_similarity": 0.0,
                     "max_similarity": 0.0,
-                    "status_breakdown": {}
+                    "status_breakdown": {},
                 }
 
             total_comparisons = len(similarities)
@@ -237,21 +223,17 @@ class SubmissionSimilarityRepository:
                 "high_similarity_pairs": high_similarity_pairs,
                 "average_similarity": round(average_similarity, 3),
                 "max_similarity": round(max_similarity, 3),
-                "status_breakdown": status_breakdown
+                "status_breakdown": status_breakdown,
             }
         except Exception as e:
             raise DatabaseException(f"Failed to get similarity statistics: {str(e)}")
 
-    def check_existing_comparison(
-            self,
-            submission_id: UUID,
-            compared_submission_id: UUID
-    ) -> bool:
+    def check_existing_comparison(self, submission_id: UUID, compared_submission_id: UUID) -> bool:
         """Check if a comparison already exists between two submissions"""
         try:
             statement = select(SubmissionSimilarity).where(
                 SubmissionSimilarity.submission_id == submission_id,
-                SubmissionSimilarity.compared_submission_id == compared_submission_id
+                SubmissionSimilarity.compared_submission_id == compared_submission_id,
             )
             return self.session.exec(statement).first() is not None
         except Exception as e:

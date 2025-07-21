@@ -27,11 +27,11 @@ class SubmissionService:
         self.detection_service = DetectionIntegrationService(session)
 
     def create_submission(
-            self,
-            submission_data: CreateSubmissionDto,
-            ip_address: Optional[str] = None,
-            user_agent: Optional[str] = None,
-            allow_duplicates: bool = False,
+        self,
+        submission_data: CreateSubmissionDto,
+        ip_address: Optional[str] = None,
+        user_agent: Optional[str] = None,
+        allow_duplicates: bool = False,
     ) -> CreateSubmissionResponseDto:
         """Create a new submission with business logic validation"""
 
@@ -159,7 +159,7 @@ class SubmissionService:
         # Add similarity detection metadata
         response_data["similarity_detection"] = {
             "status": "processing_async",
-            "message": "Similarity detection has been started in the background. Results will be available shortly."
+            "message": "Similarity detection has been started in the background. Results will be available shortly.",
         }
 
         # Include rule results from execution or from stored submission
@@ -241,7 +241,7 @@ class SubmissionService:
         return [SubmissionResponseDto.model_validate(sub.model_dump()) for sub in submissions]
 
     def get_submissions_by_project_step(
-            self, project_uuid: UUID, project_step_uuid: UUID
+        self, project_uuid: UUID, project_step_uuid: UUID
     ) -> List[SubmissionResponseDto]:
         """Get all submissions for a specific project step"""
         submissions = self.repository.get_by_project_step(project_uuid, project_step_uuid)
@@ -355,10 +355,7 @@ class SubmissionService:
         return self.detection_service.get_project_step_statistics(project_uuid, project_step_uuid)
 
     def get_high_similarity_alerts(
-            self,
-            project_uuid: UUID,
-            project_step_uuid: UUID,
-            threshold: float = 0.7
+        self, project_uuid: UUID, project_step_uuid: UUID, threshold: float = 0.7
     ) -> List[dict]:
         """Get high similarity alerts for a project step"""
         return self.detection_service.get_high_similarity_alerts(project_uuid, project_step_uuid, threshold)
