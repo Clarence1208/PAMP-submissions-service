@@ -459,6 +459,18 @@ class SimilarityDetectionService:
         self, func1_tokens: List[Dict[str, Any]], func2_tokens: List[Dict[str, Any]]
     ) -> Dict[str, Any]:
         """Compare similarity between two function token sequences using improved algorithm."""
+        # if not data short circuit to 0
+        if not func1_tokens or not func2_tokens or len(func1_tokens) == 0 or len(func2_tokens) == 0:
+            return {
+                "similarity_score": 0.0,
+                "structural_similarity": 0.0,
+                "type_sequence_similarity": 0.0,
+                "type_set_similarity": 0.0,
+                "flow_similarity": 0.0,
+                "operation_similarity": 0.0,
+                "common_patterns": [],
+            }
+
         # Prepare tokens for similarity comparison
         sim_tokens1 = self.prepare_for_similarity(func1_tokens)
         sim_tokens2 = self.prepare_for_similarity(func2_tokens)

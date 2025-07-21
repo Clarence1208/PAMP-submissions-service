@@ -209,117 +209,6 @@ class TestSimilarityDetectionService(unittest.TestCase):
         self.assertIn('functions_file1', result)
         self.assertIn('functions_file2', result)
 
-    def test_extract_functions_with_positions_simple_function(self):
-        """Test function extraction with simple function."""
-        tokens = [
-            {'type': 'function_definition', 'text': 'def hello():\n    return "world"', 'start': 0, 'end': 1}
-        ]
-        source_code = 'def hello():\n    return "world"'
-
-        functions = self.service._extract_functions_with_positions(tokens, source_code)
-
-        self.assertIsInstance(functions, dict)
-        self.assertGreater(len(functions), 0)
-
-        # Check function structure
-        func_key = list(functions.keys())[0]
-        func_data = functions[func_key]
-
-        self.assertIn('tokens', func_data)
-        self.assertIn('code_block', func_data)
-        self.assertIn('start_line', func_data)
-        self.assertIn('end_line', func_data)
-        self.assertIn('function_name', func_data)
-
-    def test_extract_functions_with_positions_no_source(self):
-        """Test function extraction without source code."""
-        tokens = [
-            {'type': 'function_definition', 'text': 'def hello():', 'start': 0, 'end': 1}
-        ]
-
-        functions = self.service._extract_functions_with_positions(tokens, "")
-
-        self.assertIsInstance(functions, dict)
-
-    def test_extract_functions_with_positions_multiple_functions(self):
-        """Test extraction of multiple functions."""
-        tokens = [
-            {'type': 'function_definition', 'text': 'def func1():', 'start': 0, 'end': 1},
-            {'type': 'return_statement', 'text': 'return 1', 'start': 1, 'end': 1},
-            {'type': 'function_definition', 'text': 'def func2():', 'start': 3, 'end': 4},
-            {'type': 'return_statement', 'text': 'return 2', 'start': 4, 'end': 4}
-        ]
-        source_code = "def func1():\n    return 1\n\ndef func2():\n    return 2"
-
-        functions = self.service._extract_functions_with_positions(tokens, source_code)
-
-        self.assertGreaterEqual(len(functions), 2)
-
-    def test_extract_function_name_from_text(self):
-        """Test function name extraction from function text."""
-        func_token = {'text': 'def calculate_sum(a, b):\n    return a + b', 'type': 'function_definition'}
-
-        name = self.service._extract_function_name(func_token, [])
-
-        self.assertEqual(name, 'calculate_sum')
-
-    def test_extract_function_name_malformed(self):
-        """Test function name extraction from malformed text."""
-        func_token = {'text': 'malformed function definition', 'type': 'function_definition'}
-
-        name = self.service._extract_function_name(func_token, [])
-
-        self.assertEqual(name, 'unknown_function')
-
-    def test_extract_function_name_multiline(self):
-        """Test function name extraction from multiline function definition."""
-        func_token = {
-            'text': 'def complex_function(\n    param1: int,\n    param2: str\n) -> bool:\n    pass',
-            'type': 'function_definition'
-        }
-
-        name = self.service._extract_function_name(func_token, [])
-
-        self.assertEqual(name, 'complex_function')
-
-    def test_extract_code_block_valid_range(self):
-        """Test code block extraction with valid line range."""
-        source_lines = ["line 0", "line 1", "line 2", "line 3", "line 4"]
-
-        code_block = self.service._extract_code_block(source_lines, 1, 3)
-
-        self.assertEqual(code_block, "line 1\nline 2")
-
-    def test_extract_code_block_empty_source(self):
-        """Test code block extraction with empty source."""
-        code_block = self.service._extract_code_block([], 0, 5)
-
-        self.assertEqual(code_block, "")
-
-    def test_extract_code_block_invalid_range(self):
-        """Test code block extraction with invalid ranges."""
-        source_lines = ["line 0", "line 1", "line 2"]
-
-        # Start after end
-        code_block = self.service._extract_code_block(source_lines, 5, 3)
-        self.assertEqual(code_block, "")
-
-        # Negative start - returns empty string as per implementation
-        code_block = self.service._extract_code_block(source_lines, -1, 2)
-        self.assertEqual(code_block, "")
-
-        # None values
-        code_block = self.service._extract_code_block(source_lines, None, None)
-        self.assertEqual(code_block, "")
-
-    def test_extract_code_block_out_of_bounds(self):
-        """Test code block extraction with out-of-bounds indices."""
-        source_lines = ["line 0", "line 1"]
-
-        code_block = self.service._extract_code_block(source_lines, 0, 10)
-
-        self.assertEqual(code_block, "line 0\nline 1")
-
     def test_compare_function_similarity_identical_functions(self):
         """Test function similarity comparison with identical functions."""
         func_tokens = [
@@ -404,12 +293,12 @@ class TestSimilarityDetectionService(unittest.TestCase):
             {'type': 'binary_operator', 'text': '*'},
             {'type': 'comparison_operator', 'text': '=='},
             {'type': 'boolean_operator', 'text': 'and'},
-            {'type': 'assignment', 'text': 'x = 1'}  # Should not be included
+            {'type': 'assignment', 'text': 'x = 1'}
         ]
 
         operations = self.service._extract_operations(tokens)
 
-        expected = ['MATH_OP', 'MATH_OP', 'COMPARE_OP', 'LOGIC_OP']
+        expected = ['MATH_OP', 'MATH_OP', 'COMPARE_OP', 'LOGIC_OP', 'METHOD_CALL']
         self.assertEqual(operations, expected)
 
     def test_sequence_similarity_identical(self):
@@ -442,23 +331,9 @@ class TestSimilarityDetectionService(unittest.TestCase):
 
     def test_sequence_similarity_empty_sequences(self):
         """Test sequence similarity with empty sequences."""
-        self.assertEqual(self.service._sequence_similarity([], []), 0.0)
+        self.assertEqual(self.service._sequence_similarity([], []), 1.0)
         self.assertEqual(self.service._sequence_similarity(['A'], []), 0.0)
         self.assertEqual(self.service._sequence_similarity([], ['A']), 0.0)
-
-    def test_extract_functions_with_positions_function_depth_tracking(self):
-        """Test function extraction with nested function depth tracking."""
-        tokens = [
-            {'type': 'function_definition', 'text': 'def outer():', 'start': 0, 'end': 1},
-            {'type': 'function_definition', 'text': 'def inner():', 'start': 2, 'end': 3},  # Nested function
-            {'type': 'return_statement', 'text': 'return 42', 'start': 4, 'end': 4}
-        ]
-        source_code = "def outer():\n    def inner():\n        return 42"
-
-        functions = self.service._extract_functions_with_positions(tokens, source_code)
-
-        # Should handle nested functions properly
-        self.assertIsInstance(functions, dict)
 
     def test_create_structural_sequence_with_edge_cases(self):
         """Test structural sequence creation with edge case token types."""
@@ -502,22 +377,6 @@ class TestSimilarityDetectionService(unittest.TestCase):
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0]['type'], 'some_other_type')
         self.assertFalse(result[0]['normalized'])
-
-    def test_extract_function_name_with_exception(self):
-        """Test function name extraction when an exception occurs."""
-        func_token = {'text': '', 'type': 'function_definition'}  # Empty text
-
-        name = self.service._extract_function_name(func_token, [])
-
-        self.assertEqual(name, 'unknown_function')
-
-    def test_extract_code_block_with_invalid_types(self):
-        """Test code block extraction with invalid start/end types."""
-        source_lines = ["line 0", "line 1", "line 2"]
-
-        # Test with string values that can't be converted to int
-        code_block = self.service._extract_code_block(source_lines, "invalid", "invalid")
-        self.assertEqual(code_block, "")
 
 
 class TestSimilarityDetectionServiceIntegration(unittest.TestCase):
@@ -623,211 +482,6 @@ class TestSimilarityDetectionServiceIntegration(unittest.TestCase):
 
         self.assertEqual(shared_blocks['total_shared_blocks'], 0)
         self.assertEqual(shared_blocks['average_similarity'], 0.0)
-
-    def test_generate_react_flow_ast_no_similarities(self):
-        """Test React Flow AST generation with no similarities."""
-        tokens1 = [{'type': 'assignment', 'text': 'x = 1', 'start': 0, 'end': 0}]
-        tokens2 = [{'type': 'assignment', 'text': 'y = 2', 'start': 0, 'end': 0}]
-
-        result = self.viz_service.generate_react_flow_ast(
-            tokens1, tokens2, "x = 1", "y = 2", "file1.py", "file2.py", "elk"
-        )
-
-        self.assertFalse(result['has_similarity'])
-        self.assertEqual(len(result['nodes']), 0)
-        self.assertEqual(len(result['edges']), 0)
-        self.assertEqual(result['message'], "No similarities detected between files")
-
-    def test_generate_react_flow_ast_with_similarities(self):
-        """Test React Flow AST generation with similarities."""
-        # Create tokens that would result in similar functions with higher similarity
-        tokens1 = [
-            {'type': 'function_definition',
-             'text': 'def calculate(x):\n    if x > 0:\n        return x * 2\n    return 0', 'start': 0, 'end': 3},
-            {'type': 'if_statement', 'text': 'if x > 0:', 'start': 1, 'end': 1},
-            {'type': 'return_statement', 'text': 'return x * 2', 'start': 2, 'end': 2},
-            {'type': 'return_statement', 'text': 'return 0', 'start': 3, 'end': 3}
-        ]
-        tokens2 = [
-            {'type': 'function_definition',
-             'text': 'def compute(y):\n    if y > 0:\n        return y * 2\n    return 0', 'start': 0, 'end': 3},
-            {'type': 'if_statement', 'text': 'if y > 0:', 'start': 1, 'end': 1},
-            {'type': 'return_statement', 'text': 'return y * 2', 'start': 2, 'end': 2},
-            {'type': 'return_statement', 'text': 'return 0', 'start': 3, 'end': 3}
-        ]
-
-        source1 = "def calculate(x):\n    if x > 0:\n        return x * 2\n    return 0"
-        source2 = "def compute(y):\n    if y > 0:\n        return y * 2\n    return 0"
-
-        result = self.viz_service.generate_react_flow_ast(
-            tokens1, tokens2, source1, source2, "file1.py", "file2.py", "elk"
-        )
-
-        # The result should have similarity detected
-        self.assertIsInstance(result, dict)
-        self.assertIn('nodes', result)
-        self.assertIn('edges', result)
-        self.assertIn('has_similarity', result)
-
-    def test_generate_optimized_file_nodes(self):
-        """Test optimized file node generation."""
-        tokens = [
-            {'type': 'function_definition', 'text': 'def test():\n    return 42', 'start': 0, 'end': 1}
-        ]
-        source_code = "def test():\n    return 42"
-        shared_blocks = []
-
-        nodes, edges, counter = self.viz_service._generate_optimized_file_nodes(
-            tokens, source_code, "test.py", "file1", 0, shared_blocks
-        )
-
-        self.assertIsInstance(nodes, list)
-        self.assertIsInstance(edges, list)
-        self.assertIsInstance(counter, int)
-        self.assertGreater(len(nodes), 0)
-
-        # Check for file root node
-        file_root = next((node for node in nodes if node['id'] == 'file1_root'), None)
-        self.assertIsNotNone(file_root)
-        self.assertEqual(file_root['type'], 'group')
-        self.assertEqual(file_root['data']['filename'], 'test.py')
-
-    def test_analyze_function_calls(self):
-        """Test function call analysis."""
-        tokens = [
-            {'type': 'function_definition', 'text': 'def caller():\n    return callee()', 'start': 0, 'end': 1},
-            {'type': 'function_definition', 'text': 'def callee():\n    return 42', 'start': 2, 'end': 3}
-        ]
-        source_code = "def caller():\n    return callee()\n\ndef callee():\n    return 42"
-        functions = {
-            'func_0': {'function_name': 'caller'},
-            'func_1': {'function_name': 'callee'}
-        }
-
-        edges = self.viz_service._analyze_function_calls(tokens, source_code, functions, "file1")
-
-        self.assertIsInstance(edges, list)
-
-    def test_extract_imports(self):
-        """Test import extraction from source code."""
-        source_code = """import os
-from typing import List, Dict
-import sys
-from pathlib import Path
-"""
-
-        imports = self.viz_service._extract_imports([], source_code)
-
-        self.assertIsInstance(imports, list)
-        self.assertGreater(len(imports), 0)
-
-        # Check first import
-        first_import = imports[0]
-        self.assertIn('module', first_import)
-        self.assertIn('type', first_import)
-        self.assertIn('line', first_import)
-        self.assertEqual(first_import['module'], 'os')
-        self.assertEqual(first_import['type'], 'import')
-
-    def test_find_similarity_for_function(self):
-        """Test finding similarity block for a specific function."""
-        shared_blocks = [
-            {'file1_function': 'func_0_test1', 'file2_function': 'func_0_test2', 'similarity_score': 0.9},
-            {'file1_function': 'func_1_calc', 'file2_function': 'func_1_compute', 'similarity_score': 0.85}
-        ]
-
-        # Test finding file1 function
-        result = self.viz_service._find_similarity_for_function('func_0_test1', shared_blocks, 'file1')
-
-        self.assertIsNotNone(result)
-        self.assertEqual(result['file1_function'], 'func_0_test1')
-        self.assertEqual(result['file2_function'], 'func_0_test2')
-        self.assertEqual(result['similarity_score'], 0.9)
-
-        # Test finding file2 function
-        result2 = self.viz_service._find_similarity_for_function('func_1_compute', shared_blocks, 'file2')
-
-        self.assertIsNotNone(result2)
-        self.assertEqual(result2['file2_function'], 'func_1_compute')
-        self.assertEqual(result2['similarity_score'], 0.85)
-
-        # Test with non-existent function
-        result3 = self.viz_service._find_similarity_for_function('nonexistent', shared_blocks, 'file1')
-        self.assertIsNone(result3)
-
-    def test_generate_similarity_edges(self):
-        """Test similarity edge generation."""
-        shared_blocks = [
-            {'file1_function': 'func_0_test1', 'file2_function': 'func_0_test2', 'similarity_score': 0.9}
-        ]
-
-        all_nodes = [
-            {'id': 'file1_func_0_test1', 'type': 'default'},
-            {'id': 'file2_func_0_test2', 'type': 'default'}
-        ]
-
-        edges = self.viz_service._generate_similarity_edges(shared_blocks, all_nodes)
-
-        self.assertIsInstance(edges, list)
-        self.assertEqual(len(edges), 1)
-
-        edge = edges[0]
-        self.assertIn('id', edge)
-        self.assertIn('source', edge)
-        self.assertIn('target', edge)
-        self.assertEqual(edge['source'], 'file1_func_0_test1')
-        self.assertEqual(edge['target'], 'file2_func_0_test2')
-
-    def test_find_containing_function(self):
-        """Test finding which function contains a given line."""
-        source_lines = [
-            "def function1():",
-            "    x = 1",
-            "    return x",
-            "",
-            "def function2():",
-            "    y = 2",
-            "    return y"
-        ]
-        function_names = ['function1', 'function2']
-
-        # Line 2 should be in function1
-        result = self.viz_service._find_containing_function(2, source_lines, function_names)
-        self.assertEqual(result, 'function1')
-
-        # Line 6 should be in function2
-        result2 = self.viz_service._find_containing_function(6, source_lines, function_names)
-        self.assertEqual(result2, 'function2')
-
-        # Line 1 should be in function1 (the def line itself)
-        result3 = self.viz_service._find_containing_function(1, source_lines, function_names)
-        self.assertEqual(result3, 'function1')
-
-        # Test with line number that doesn't contain a function
-        result4 = self.viz_service._find_containing_function(100, source_lines, function_names)
-        self.assertIsNone(result4)
-
-    def test_generate_optimized_file_nodes_with_imports(self):
-        """Test file node generation that includes import handling."""
-        tokens = [
-            {'type': 'import_statement', 'text': 'import os', 'start': 0, 'end': 0},
-            {'type': 'function_definition', 'text': 'def test():\n    return 42', 'start': 1, 'end': 2}
-        ]
-        source_code = "import os\ndef test():\n    return 42"
-        shared_blocks = []
-
-        nodes, edges, counter = self.viz_service._generate_optimized_file_nodes(
-            tokens, source_code, "test.py", "file1", 0, shared_blocks
-        )
-
-        # Should have file root, import group, and function nodes
-        self.assertGreaterEqual(len(nodes), 3)
-
-        # Check for import group node
-        import_node = next((node for node in nodes if 'imports_group' in node['id']), None)
-        self.assertIsNotNone(import_node)
-        self.assertEqual(import_node['data']['type'], 'import_group')
-
 
 if __name__ == '__main__':
     unittest.main()

@@ -893,6 +893,10 @@ class TokenizationService:
         if not source_lines:
             return ""
 
+        # Handle None values
+        if start_line is None or end_line is None:
+            return ""
+
         # Ensure line numbers are valid
         start_idx = max(0, start_line)
         end_idx = min(len(source_lines), end_line)
