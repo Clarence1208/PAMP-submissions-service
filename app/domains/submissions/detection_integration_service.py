@@ -696,18 +696,28 @@ class DetectionIntegrationService:
             return None
 
     def get_submission_similarities(self, submission_id: UUID) -> List[dict]:
-        """Get all similarity results for a submission"""
+        """Get all similarity results for a submission (bidirectional)"""
         try:
             similarities = self.similarity_repository.get_by_submission_id(submission_id)
 
             results = []
             for similarity in similarities:
+                # Check if we need to swap the IDs (when the requested submission is in compared_submission_id)
+                if similarity.compared_submission_id == submission_id:
+                    # Swap the IDs - the requested submission should be the main submission
+                    main_submission_id = submission_id
+                    compared_submission_id = similarity.submission_id
+                else:
+                    # Keep the original order
+                    main_submission_id = similarity.submission_id
+                    compared_submission_id = similarity.compared_submission_id
+
                 # Get the compared submission info
-                compared_submission = self.submission_repository.get_by_id(similarity.compared_submission_id)
+                compared_submission = self.submission_repository.get_by_id(compared_submission_id)
 
                 result = {
                     "similarity_id": similarity.id,
-                    "compared_submission_id": similarity.compared_submission_id,
+                    "compared_submission_id": compared_submission_id,
                     "compared_submission_link": compared_submission.link if compared_submission else None,
                     "overall_similarity": similarity.overall_similarity,
                     "jaccard_similarity": similarity.jaccard_similarity,
@@ -718,6 +728,8 @@ class DetectionIntegrationService:
                     "created_at": similarity.created_at,
                     "processing_time_seconds": similarity.processing_time_seconds,
                     "error_message": similarity.error_message,
+                    # Add a flag to indicate if this was a swapped result for debugging
+                    "is_swapped": similarity.compared_submission_id == submission_id,
                 }
 
                 results.append(result)
