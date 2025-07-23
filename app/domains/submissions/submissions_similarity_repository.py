@@ -37,11 +37,16 @@ class SubmissionSimilarityRepository:
             raise DatabaseException(f"Failed to get similarity record: {str(e)}")
 
     def get_by_submission_id(self, submission_id: UUID) -> List[SubmissionSimilarity]:
-        """Get all similarity records for a specific submission"""
+        """Get all similarity records for a specific submission (bidirectional)"""
         try:
             statement = (
                 select(SubmissionSimilarity)
-                .where(SubmissionSimilarity.submission_id == submission_id)
+                .where(
+                    or_(
+                        SubmissionSimilarity.submission_id == submission_id,
+                        SubmissionSimilarity.compared_submission_id == submission_id
+                    )
+                )
                 .order_by(SubmissionSimilarity.overall_similarity.desc())
             )
             return list(self.session.exec(statement).all())
