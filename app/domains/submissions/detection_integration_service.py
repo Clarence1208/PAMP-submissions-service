@@ -59,7 +59,7 @@ class DetectionIntegrationService:
         self.visualization_service = get_visualization_service(self.tokenization_service)
 
         # Create thread pool with limited workers to prevent server overload
-        self.similarity_executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix="similarity")
+        self.similarity_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="similarity")
 
         # Thread-local storage for database sessions
         self._local = threading.local()
