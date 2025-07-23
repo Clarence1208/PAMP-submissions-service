@@ -1,6 +1,6 @@
 import logging
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 from app.domains.repositories.exceptions import (
     RepositoryFetchException,
@@ -39,9 +39,15 @@ class RuleExecutionResult:
 class RuleService:
     """Service for executing validation rules on submissions"""
 
-    def __init__(self):
+    def __init__(self, submission_fetcher: Optional["SubmissionFetcher"] = None):
         self.registry = rule_registry
-        self.submission_fetcher = SubmissionFetcher()
+        
+        # Use injected service or get singleton
+        if submission_fetcher is None:
+            from app.shared.services import get_submission_fetcher
+            self.submission_fetcher = get_submission_fetcher()
+        else:
+            self.submission_fetcher = submission_fetcher
 
     def validate_submission(self, submission_data: CreateSubmissionDto) -> List[RuleExecutionResult]:
         """

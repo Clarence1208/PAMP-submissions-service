@@ -17,10 +17,9 @@ class VisualizationService:
     def __init__(self, tokenization_service=None):
         """Initialize the visualization service."""
         if tokenization_service is None:
-            # Import here to avoid circular imports
-            from app.domains.tokenization.tokenization_service import TokenizationService
-
-            self.tokenization_service = TokenizationService()
+            # Use singleton service to avoid multiple initializations
+            from app.shared.services import get_tokenization_service
+            self.tokenization_service = get_tokenization_service()
         else:
             self.tokenization_service = tokenization_service
 
