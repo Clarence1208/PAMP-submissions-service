@@ -19,6 +19,7 @@ class VisualizationService:
         if tokenization_service is None:
             # Use singleton service to avoid multiple initializations
             from app.shared.services import get_tokenization_service
+
             self.tokenization_service = get_tokenization_service()
         else:
             self.tokenization_service = tokenization_service

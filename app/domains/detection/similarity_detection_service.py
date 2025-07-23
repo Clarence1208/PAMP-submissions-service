@@ -138,48 +138,48 @@ class SimilarityDetectionService:
         """
         if token_type == "function_definition":
             # Normalize function definitions: "def calculate_area(radius):" -> "def func(params):"
-            return re.sub(r'def\s+\w+\([^)]*\):', 'def func(params):', text)
-        
+            return re.sub(r"def\s+\w+\([^)]*\):", "def func(params):", text)
+
         elif token_type == "method_definition":
             # Normalize method definitions: "def __init__(self, name):" -> "def method(self, params):"
-            return re.sub(r'def\s+\w+\(self[^)]*\):', 'def method(self, params):', text)
-        
+            return re.sub(r"def\s+\w+\(self[^)]*\):", "def method(self, params):", text)
+
         elif token_type == "class_definition":
             # Normalize class definitions: "class Person:" -> "class Class:"
-            return re.sub(r'class\s+\w+:', 'class Class:', text)
-        
+            return re.sub(r"class\s+\w+:", "class Class:", text)
+
         elif token_type == "return_statement":
             # Normalize return statements: "return a + b" -> "return expr"
             if "return" in text and len(text.split()) > 1:
                 return "return expr"
             return text
-        
+
         elif token_type == "assignment":
             # Normalize assignments: "result = calculate(x, y)" -> "var = expr"
-            return re.sub(r'\w+\s*=\s*.+', 'var = expr', text)
-        
+            return re.sub(r"\w+\s*=\s*.+", "var = expr", text)
+
         elif token_type in ["if_statement", "elif_clause"]:
             # Normalize conditions: "if x > 0:" -> "if condition:"
-            return re.sub(r'(if|elif)\s+.+:', r'\1 condition:', text)
-        
+            return re.sub(r"(if|elif)\s+.+:", r"\1 condition:", text)
+
         elif token_type in ["for_statement", "while_statement"]:
             # Normalize loops: "for i in range(10):" -> "for item in iterable:"
             if token_type == "for_statement":
-                return re.sub(r'for\s+\w+\s+in\s+.+:', 'for item in iterable:', text)
+                return re.sub(r"for\s+\w+\s+in\s+.+:", "for item in iterable:", text)
             else:  # while_statement
-                return re.sub(r'while\s+.+:', 'while condition:', text)
-        
+                return re.sub(r"while\s+.+:", "while condition:", text)
+
         elif token_type == "call":
             # Normalize function calls: "calculate(x, y)" -> "func(args)"
-            return re.sub(r'\w+\([^)]*\)', 'func(args)', text)
-        
+            return re.sub(r"\w+\([^)]*\)", "func(args)", text)
+
         # Return original text for other types
         return text
 
     def _calculate_enhanced_jaccard_similarity(self, sig1_parts: List[str], sig2_parts: List[str]) -> float:
         """
         Calculate enhanced Jaccard similarity with fuzzy matching for continuous values.
-        
+
         This combines exact matching with fuzzy matching to provide more granular similarity scores.
         """
         # Early exit for edge cases
@@ -187,72 +187,72 @@ class SimilarityDetectionService:
             return 1.0
         if not sig1_parts or not sig2_parts:
             return 0.0
-        
+
         # Filter empty parts once
         sig1_clean = [part for part in sig1_parts if part.strip()]
         sig2_clean = [part for part in sig2_parts if part.strip()]
-        
+
         if not sig1_clean and not sig2_clean:
             return 1.0
         if not sig1_clean or not sig2_clean:
             return 0.0
-        
+
         # Convert to sets for faster operations
         set1 = set(sig1_clean)
         set2 = set(sig2_clean)
-        
+
         # 1. Exact matching (traditional Jaccard)
         exact_common = set1 & set2
         total_unique = set1 | set2
         exact_jaccard = len(exact_common) / len(total_unique)
-        
+
         # Early exit if perfect match or no potential for fuzzy matching
         if exact_jaccard == 1.0:
             return 1.0
-        
+
         # Get unmatched parts efficiently
         unmatched_sig1 = set1 - exact_common
         unmatched_sig2 = set2 - exact_common
-        
+
         # Skip fuzzy matching if no unmatched parts or too many (performance threshold)
         if not unmatched_sig1 or not unmatched_sig2 or len(unmatched_sig1) * len(unmatched_sig2) > 50:
             return exact_jaccard
-        
+
         # 2. Optimized fuzzy matching for remaining unmatched parts
         fuzzy_matches = 0.0
         fuzzy_threshold = 0.6
-        
+
         # Pre-calculate lengths for quick length-based filtering
         unmatched_list1 = list(unmatched_sig1)
         unmatched_list2 = list(unmatched_sig2)
-        
+
         for part1 in unmatched_list1:
             best_match = 0.0
             len1 = len(part1)
-            
+
             for part2 in unmatched_list2:
                 len2 = len(part2)
-                
+
                 # Quick length-based filtering (if length difference > 40%, skip)
                 if abs(len1 - len2) / max(len1, len2) > 0.4:
                     continue
-                
+
                 # Quick character overlap check before expensive SequenceMatcher
                 if len(set(part1) & set(part2)) / len(set(part1) | set(part2)) < 0.3:
                     continue
-                
+
                 # Use SequenceMatcher only for promising candidates
                 fuzzy_sim = SequenceMatcher(None, part1, part2).ratio()
-                
+
                 if fuzzy_sim >= fuzzy_threshold:
                     best_match = max(best_match, fuzzy_sim)
                     # Early break if we found a very good match
                     if fuzzy_sim > 0.9:
                         break
-            
+
             if best_match > 0:
                 fuzzy_matches += best_match
-        
+
         # 3. Combine exact and fuzzy scores efficiently
         if fuzzy_matches > 0:
             # Calculate fuzzy contribution
@@ -260,7 +260,7 @@ class SimilarityDetectionService:
             fuzzy_weight = 0.3 * (len(unmatched_list1) / max(len(sig1_clean), len(sig2_clean)))
             combined_score = exact_jaccard * (1 - fuzzy_weight) + avg_fuzzy * fuzzy_weight
             return min(1.0, combined_score)
-        
+
         return exact_jaccard
 
     def compare_similarity(self, tokens1: List[Dict[str, Any]], tokens2: List[Dict[str, Any]]) -> Dict[str, Any]:
@@ -281,7 +281,7 @@ class SimilarityDetectionService:
 
         # Calculate enhanced Jaccard similarity with fuzzy matching
         jaccard_similarity = self._calculate_enhanced_jaccard_similarity(sig1_parts, sig2_parts)
-        
+
         # Calculate traditional metrics for backward compatibility
         common_parts = set(sig1_parts) & set(sig2_parts)
         total_unique_parts = set(sig1_parts) | set(sig2_parts)
@@ -321,12 +321,12 @@ class SimilarityDetectionService:
         # 6. CALCULATE OVERALL SIMILARITY (weighted combination)
         # For file-level comparison, adjust weights compared to function-level
         overall_similarity = (
-            jaccard_similarity * 0.25          # Signature-based similarity
-            + structural_similarity * 0.30     # Overall code structure
+            jaccard_similarity * 0.25  # Signature-based similarity
+            + structural_similarity * 0.30  # Overall code structure
             + type_sequence_similarity * 0.20  # Token sequence patterns
-            + flow_similarity * 0.15           # Control flow logic
-            + operation_similarity * 0.05      # Mathematical operations
-            + type_similarity * 0.05           # Basic type overlap
+            + flow_similarity * 0.15  # Control flow logic
+            + operation_similarity * 0.05  # Mathematical operations
+            + type_similarity * 0.05  # Basic type overlap
         ) * length_penalty  # Apply length penalty
 
         return {

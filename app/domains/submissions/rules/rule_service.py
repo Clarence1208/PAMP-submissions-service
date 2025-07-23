@@ -41,10 +41,11 @@ class RuleService:
 
     def __init__(self, submission_fetcher: Optional["SubmissionFetcher"] = None):
         self.registry = rule_registry
-        
+
         # Use injected service or get singleton
         if submission_fetcher is None:
             from app.shared.services import get_submission_fetcher
+
             self.submission_fetcher = get_submission_fetcher()
         else:
             self.submission_fetcher = submission_fetcher

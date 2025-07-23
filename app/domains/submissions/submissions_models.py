@@ -122,10 +122,10 @@ class SubmissionSimilarity(SQLModel, table=True):
     # Shared code analysis
     shared_blocks_count: int = Field(default=0, description="Number of shared code blocks detected")
     average_shared_similarity: float = Field(default=0.0, description="Average similarity of shared code blocks")
-    structural_similarity : float = Field(default=0.0, description="Structural similarity score (0.0 to 1.0)")
-    type_sequence_similarity : float = Field(default=0.0, description="Type sequence similarity score (0.0 to 1.0)")
-    flow_similarity : float = Field(default=0.0, description="Flow similarity score (0.0 to 1.0)")
-    operation_similarity : float = Field(default=0.0, description="Operation similarity score (0.0 to 1.0)")
+    structural_similarity: float = Field(default=0.0, description="Structural similarity score (0.0 to 1.0)")
+    type_sequence_similarity: float = Field(default=0.0, description="Type sequence similarity score (0.0 to 1.0)")
+    flow_similarity: float = Field(default=0.0, description="Flow similarity score (0.0 to 1.0)")
+    operation_similarity: float = Field(default=0.0, description="Operation similarity score (0.0 to 1.0)")
 
     # Detection metadata
     detection_algorithm: str = Field(default="ast_similarity_v2", description="Algorithm used for detection")
