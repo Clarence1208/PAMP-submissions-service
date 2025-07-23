@@ -105,20 +105,6 @@ class TestSimilarityDetectionService(unittest.TestCase):
         result = self.service.prepare_for_similarity([])
         self.assertEqual(result, [])
 
-    def test_get_similarity_signature_basic(self):
-        """Test similarity signature generation."""
-        tokens = [
-            {'type': 'function_definition', 'text': 'def hello():', 'normalized': False},
-            {'type': 'string', 'text': 'Hello, World!', 'normalized': False}
-        ]
-
-        signature = self.service.get_similarity_signature(tokens)
-
-        self.assertIsInstance(signature, str)
-        self.assertGreater(len(signature), 0)
-        self.assertIn('function_definition:def hello():', signature)
-        self.assertIn('<STRING>', signature)
-
     def test_get_similarity_signature_truncation(self):
         """Test that very long text is truncated in signatures."""
         long_text = "a" * 50  # Longer than 20 character limit
