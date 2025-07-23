@@ -135,6 +135,11 @@ class SubmissionSimilarityRepository:
             similarity.overall_similarity = results.get("overall_similarity", 0.0)
             similarity.shared_blocks_count = results.get("shared_blocks_count", 0)
             similarity.average_shared_similarity = results.get("average_shared_similarity", 0.0)
+            similarity.structural_similarity = results.get("structural_similarity", 0.0)
+            similarity.type_sequence_similarity = results.get("type_sequence_similarity", 0.0)
+            similarity.flow_similarity = results.get("flow_similarity", 0.0)
+            similarity.operation_similarity = results.get("operation_similarity", 0.0)
+
 
             # Update detailed results
             similarity.similarity_details = results.get("similarity_details")

@@ -86,7 +86,7 @@ class DetectionIntegrationService:
             logger.error(f"Failed to start async similarity processing: {str(e)}")
 
     def _process_single_comparison_threaded(
-        self, submission1_id: UUID, submission2_id: UUID, project_uuid: UUID, project_step_uuid: UUID
+            self, submission1_id: UUID, submission2_id: UUID, project_uuid: UUID, project_step_uuid: UUID
     ) -> None:
         """Process a single comparison in a thread with its own database session"""
         try:
@@ -130,12 +130,12 @@ class DetectionIntegrationService:
             logger.error(f"Failed async comparison between {submission1_id} and {submission2_id}: {str(e)}")
 
     def _process_single_comparison_with_repos(
-        self,
-        similarity_record,
-        submission1: Submission,
-        submission2: Submission,
-        submission_repo: SubmissionRepository,
-        similarity_repo: SubmissionSimilarityRepository,
+            self,
+            similarity_record,
+            submission1: Submission,
+            submission2: Submission,
+            submission_repo: SubmissionRepository,
+            similarity_repo: SubmissionSimilarityRepository,
     ) -> None:
         """Process comparison with provided repositories (for thread safety)"""
         start_time = time.time()
@@ -236,12 +236,23 @@ class DetectionIntegrationService:
                 results = {
                     "jaccard_similarity": similarity_result["jaccard_similarity"],
                     "type_similarity": similarity_result["type_similarity"],
+                    "overall_similarity": similarity_result["overall_similarity"],
+                    "structural_similarity": similarity_result["structural_similarity"],
+                    "type_sequence_similarity": similarity_result["type_sequence_similarity"],
+                    "flow_similarity": similarity_result["flow_similarity"],
+                    "operation_similarity": similarity_result["operation_similarity"],
                     "processing_time_seconds": processing_time,
                     "similarity_details": {
                         "algorithm": "ast_similarity",
                         "common_elements": similarity_result["common_elements"],
                         "total_unique_elements": similarity_result["total_unique_elements"],
+                        "length_ratio": similarity_result["length_ratio"],
+                        "length_penalty": similarity_result["length_penalty"],
                         "tokens_count": {"submission1": len(tokens1), "submission2": len(tokens2)},
+                        "processed_tokens_count": {
+                            "submission1": similarity_result["tokens1_length"],
+                            "submission2": similarity_result["tokens2_length"]
+                        },
                         "files_count": {
                             "submission1": len(repo1_compatible_files),
                             "submission2": len(repo2_compatible_files),
@@ -440,7 +451,11 @@ class DetectionIntegrationService:
                 results = {
                     "jaccard_similarity": similarity_result["jaccard_similarity"],
                     "type_similarity": similarity_result["type_similarity"],
-                    # "overall_similarity": overall_similarity,
+                    "overall_similarity": similarity_result["overall_similarity"],
+                    "structural_similarity": similarity_result["structural_similarity"],
+                    "type_sequence_similarity": similarity_result["type_sequence_similarity"],
+                    "flow_similarity": similarity_result["flow_similarity"],
+                    "operation_similarity": similarity_result["operation_similarity"],
                     # "shared_blocks_count": shared_blocks_result['total_shared_blocks'],
                     # "average_shared_similarity": shared_blocks_result['average_similarity'],
                     "processing_time_seconds": processing_time,
@@ -448,11 +463,25 @@ class DetectionIntegrationService:
                         "algorithm": "ast_similarity",
                         "common_elements": similarity_result["common_elements"],
                         "total_unique_elements": similarity_result["total_unique_elements"],
+                        "length_ratio": similarity_result["length_ratio"],
+                        "length_penalty": similarity_result["length_penalty"],
                         "tokens_count": {"submission1": len(tokens1), "submission2": len(tokens2)},
+                        "processed_tokens_count": {
+                            "submission1": similarity_result["tokens1_length"],
+                            "submission2": similarity_result["tokens2_length"]
+                        },
                         "files_count": {
                             "submission1": len(repo1_compatible_files),
                             "submission2": len(repo2_compatible_files),
                         },
+                        "similarity_breakdown": {
+                            "jaccard_similarity": similarity_result["jaccard_similarity"],
+                            "structural_similarity": similarity_result["structural_similarity"],
+                            "type_sequence_similarity": similarity_result["type_sequence_similarity"],
+                            "flow_similarity": similarity_result["flow_similarity"],
+                            "operation_similarity": similarity_result["operation_similarity"],
+                            "type_similarity": similarity_result["type_similarity"],
+                        }
                     },
                     # "shared_blocks": {
                     #     "blocks": shared_blocks_result['shared_blocks'],
@@ -466,8 +495,8 @@ class DetectionIntegrationService:
                 # Update the similarity record with results
                 self.similarity_repository.update_results(similarity_record.id, results)
 
-                # logger.info(f"Successfully processed comparison between {submission1.id} and {submission2.id} "
-                #            f"with overall similarity: {overall_similarity:.3f}")
+                logger.info(f"Successfully processed comparison between {submission1.id} and {submission2.id} "
+                            f"with overall similarity: {similarity_result['overall_similarity']:.3f}")
 
             finally:
                 # Clean up temporary directories
@@ -483,13 +512,13 @@ class DetectionIntegrationService:
             raise
 
     def _detect_shared_blocks_multifile(
-        self,
-        repo1_path: Path,
-        repo2_path: Path,
-        repo1_files: List[Path],
-        repo2_files: List[Path],
-        submission1: Submission,
-        submission2: Submission,
+            self,
+            repo1_path: Path,
+            repo2_path: Path,
+            repo1_files: List[Path],
+            repo2_files: List[Path],
+            submission1: Submission,
+            submission2: Submission,
     ) -> Dict[str, Any]:
         """
         Optimized detection of shared code blocks between multi-file submissions.
@@ -721,9 +750,11 @@ class DetectionIntegrationService:
                     "compared_submission_link": compared_submission.link if compared_submission else None,
                     "overall_similarity": similarity.overall_similarity,
                     "jaccard_similarity": similarity.jaccard_similarity,
+                    "structural_similarity": similarity.structural_similarity,
+                    "type_sequence_similarity": similarity.type_sequence_similarity,
+                    "flow_similarity": similarity.flow_similarity,
+                    "operation_similarity": similarity.operation_similarity,
                     "type_similarity": similarity.type_similarity,
-                    "shared_blocks_count": similarity.shared_blocks_count,
-                    "average_shared_similarity": similarity.average_shared_similarity,
                     "status": similarity.status,
                     "created_at": similarity.created_at,
                     "processing_time_seconds": similarity.processing_time_seconds,
@@ -772,8 +803,10 @@ class DetectionIntegrationService:
                     "overall_similarity": similarity.overall_similarity,
                     "jaccard_similarity": similarity.jaccard_similarity,
                     "type_similarity": similarity.type_similarity,
-                    "shared_blocks_count": similarity.shared_blocks_count,
-                    "average_shared_similarity": similarity.average_shared_similarity,
+                    "structural_similarity": similarity.structural_similarity,
+                    "type_sequence_similarity": similarity.type_sequence_similarity,
+                    "flow_similarity": similarity.flow_similarity,
+                    "operation_similarity": similarity.operation_similarity,
                 },
                 "analysis_metadata": {
                     "detection_algorithm": similarity.detection_algorithm,
@@ -802,7 +835,7 @@ class DetectionIntegrationService:
             raise DatabaseException(f"Failed to get project step statistics: {str(e)}")
 
     def get_high_similarity_alerts(
-        self, project_uuid: UUID, project_step_uuid: UUID, threshold: float = 0.7
+            self, project_uuid: UUID, project_step_uuid: UUID, threshold: float = 0.7
     ) -> List[dict]:
         """Get high similarity alerts for a project step"""
         try:
