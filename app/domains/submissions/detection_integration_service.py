@@ -25,14 +25,38 @@ logger = logging.getLogger(__name__)
 class DetectionIntegrationService:
     """Service for integrating similarity detection with submissions"""
 
-    def __init__(self, session: Session):
+    def __init__(
+        self, 
+        session: Session,
+        tokenization_service: Optional[TokenizationService] = None,
+        similarity_service: Optional[SimilarityDetectionService] = None,
+        submission_fetcher: Optional[SubmissionFetcher] = None
+    ):
         self.session = session
         self.submission_repository = SubmissionRepository(session)
         self.similarity_repository = SubmissionSimilarityRepository(session)
-        self.tokenization_service = TokenizationService()
-        self.similarity_service = SimilarityDetectionService()
-        self.visualization_service = VisualizationService(self.tokenization_service)
-        self.submission_fetcher = SubmissionFetcher()
+        
+        # Use injected services or get singletons
+        if tokenization_service is None:
+            from app.shared.services import get_tokenization_service
+            self.tokenization_service = get_tokenization_service()
+        else:
+            self.tokenization_service = tokenization_service
+            
+        if similarity_service is None:
+            from app.shared.services import get_similarity_service
+            self.similarity_service = get_similarity_service()
+        else:
+            self.similarity_service = similarity_service
+            
+        if submission_fetcher is None:
+            from app.shared.services import get_submission_fetcher
+            self.submission_fetcher = get_submission_fetcher()
+        else:
+            self.submission_fetcher = submission_fetcher
+            
+        from app.shared.services import get_visualization_service
+        self.visualization_service = get_visualization_service(self.tokenization_service)
 
         # Create thread pool with limited workers to prevent server overload
         self.similarity_executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix="similarity")

@@ -7,13 +7,14 @@ from fastapi import APIRouter, Depends, HTTPException
 from app.domains.detection.similarity_detection_service import SimilarityDetectionService
 from app.domains.detection.visualization import VisualizationService
 from app.domains.tokenization.tokenization_service import TokenizationService
+from app.shared.services import get_tokenization_service as get_singleton_tokenization_service
 
 router = APIRouter(prefix="/detection", tags=["detection"])
 
 
 def get_tokenization_service() -> TokenizationService:
     """Dependency to get tokenization service"""
-    return TokenizationService()
+    return get_singleton_tokenization_service()
 
 
 @router.get("/similarity-test", response_model=Dict[str, Any])
