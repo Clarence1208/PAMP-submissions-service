@@ -133,7 +133,7 @@ class SimilarityDetectionService:
     def compare_similarity(self, tokens1: List[Dict[str, Any]], tokens2: List[Dict[str, Any]]) -> Dict[str, Any]:
         """
         Compare similarity between two sets of tokens.
-        Returns similarity metrics and analysis.
+        Returns similarity metrics and analysis with overall similarity score.
         """
         # Prepare both token sets for similarity comparison
         sim_tokens1 = self.prepare_for_similarity(tokens1)
@@ -161,13 +161,56 @@ class SimilarityDetectionService:
 
         type_similarity = len(common_types) / len(total_types) if total_types else 0
 
+        # 1. STRUCTURAL SEQUENCE SIMILARITY
+        seq1 = self._create_structural_sequence(sim_tokens1)
+        seq2 = self._create_structural_sequence(sim_tokens2)
+        structural_similarity = self._sequence_similarity(seq1, seq2)
+
+        # 2. TOKEN TYPE SEQUENCE SIMILARITY
+        type_sequence_similarity = self._sequence_similarity(types1, types2)
+
+        # 3. LOGICAL FLOW SIMILARITY (if-else, loops, returns)
+        flow1 = self._extract_logical_flow(sim_tokens1)
+        flow2 = self._extract_logical_flow(sim_tokens2)
+        flow_similarity = self._sequence_similarity(flow1, flow2)
+
+        # 4. OPERATION SIMILARITY
+        ops1 = self._extract_operations(sim_tokens1)
+        ops2 = self._extract_operations(sim_tokens2)
+        operation_similarity = self._sequence_similarity(ops1, ops2)
+
+        # 5. LENGTH PENALTY for very different file sizes
+        len1, len2 = len(sim_tokens1), len(sim_tokens2)
+        length_ratio = min(len1, len2) / max(len1, len2) if max(len1, len2) > 0 else 0.0
+        length_penalty = 1.0 if length_ratio > 0.5 else (0.9 if length_ratio > 0.3 else 0.8)
+
+        # 6. CALCULATE OVERALL SIMILARITY (weighted combination)
+        # For file-level comparison, adjust weights compared to function-level
+        overall_similarity = (
+            jaccard_similarity * 0.25          # Signature-based similarity
+            + structural_similarity * 0.30     # Overall code structure
+            + type_sequence_similarity * 0.20  # Token sequence patterns
+            + flow_similarity * 0.15           # Control flow logic
+            + operation_similarity * 0.05      # Mathematical operations
+            + type_similarity * 0.05           # Basic type overlap
+        ) * length_penalty  # Apply length penalty
+
         return {
             "jaccard_similarity": jaccard_similarity,
             "type_similarity": type_similarity,
+            "overall_similarity": round(overall_similarity, 4),
+            "structural_similarity": round(structural_similarity, 4),
+            "type_sequence_similarity": round(type_sequence_similarity, 4),
+            "flow_similarity": round(flow_similarity, 4),
+            "operation_similarity": round(operation_similarity, 4),
+            "length_penalty": round(length_penalty, 4),
             "common_elements": len(common_parts),
             "total_unique_elements": len(total_unique_parts),
             "signature1_length": len(sig1_parts),
             "signature2_length": len(sig2_parts),
+            "tokens1_length": len1,
+            "tokens2_length": len2,
+            "length_ratio": round(length_ratio, 4),
             "common_types": list(common_types),
             "signatures": {
                 "file1": signature1[:100] + "..." if len(signature1) > 100 else signature1,

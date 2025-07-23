@@ -25,8 +25,10 @@ class SimilarityMetricsDto(BaseModel):
     overall_similarity: float
     jaccard_similarity: float
     type_similarity: float
-    shared_blocks_count: int
-    average_shared_similarity: float
+    structural_similarity: Optional[float] = None
+    type_sequence_similarity: Optional[float] = None
+    flow_similarity: Optional[float] = None
+    operation_similarity: Optional[float] = None
 
 
 class SubmissionSummaryDto(BaseModel):
@@ -80,8 +82,10 @@ class SimilarityResponseDto(BaseModel):
     overall_similarity: float
     jaccard_similarity: float
     type_similarity: float
-    shared_blocks_count: int
-    average_shared_similarity: float
+    structural_similarity: Optional[float] = None
+    type_sequence_similarity: Optional[float] = None
+    flow_similarity: Optional[float] = None
+    operation_similarity: Optional[float] = None
     status: SimilarityStatus
     created_at: datetime
     processing_time_seconds: Optional[float]
