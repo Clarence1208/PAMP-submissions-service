@@ -55,16 +55,17 @@ async def lifespan(app: FastAPI):
     # Startup: Create database tables
     create_db_and_tables()
     logger.info("🚀 Database tables created successfully")
-    
+
     # Initialize singleton services
-    from app.shared.services import init_services, cleanup_services
+    from app.shared.services import cleanup_services, init_services
+
     init_services()
     logger.info("🔧 Singleton services initialized")
-    
+
     logger.info(f"📊 Starting {settings.app_name} v{settings.app_version}")
     logger.info(f"🔧 Debug mode: {settings.debug}")
     yield
-    
+
     # Shutdown: Cleanup services
     cleanup_services()
     logger.info("🛑 Application shutting down")

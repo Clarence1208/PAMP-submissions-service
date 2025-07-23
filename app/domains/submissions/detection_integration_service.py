@@ -26,36 +26,40 @@ class DetectionIntegrationService:
     """Service for integrating similarity detection with submissions"""
 
     def __init__(
-        self, 
+        self,
         session: Session,
         tokenization_service: Optional[TokenizationService] = None,
         similarity_service: Optional[SimilarityDetectionService] = None,
-        submission_fetcher: Optional[SubmissionFetcher] = None
+        submission_fetcher: Optional[SubmissionFetcher] = None,
     ):
         self.session = session
         self.submission_repository = SubmissionRepository(session)
         self.similarity_repository = SubmissionSimilarityRepository(session)
-        
+
         # Use injected services or get singletons
         if tokenization_service is None:
             from app.shared.services import get_tokenization_service
+
             self.tokenization_service = get_tokenization_service()
         else:
             self.tokenization_service = tokenization_service
-            
+
         if similarity_service is None:
             from app.shared.services import get_similarity_service
+
             self.similarity_service = get_similarity_service()
         else:
             self.similarity_service = similarity_service
-            
+
         if submission_fetcher is None:
             from app.shared.services import get_submission_fetcher
+
             self.submission_fetcher = get_submission_fetcher()
         else:
             self.submission_fetcher = submission_fetcher
-            
+
         from app.shared.services import get_visualization_service
+
         self.visualization_service = get_visualization_service(self.tokenization_service)
 
         # Create thread pool with limited workers to prevent server overload
@@ -110,7 +114,7 @@ class DetectionIntegrationService:
             logger.error(f"Failed to start async similarity processing: {str(e)}")
 
     def _process_single_comparison_threaded(
-            self, submission1_id: UUID, submission2_id: UUID, project_uuid: UUID, project_step_uuid: UUID
+        self, submission1_id: UUID, submission2_id: UUID, project_uuid: UUID, project_step_uuid: UUID
     ) -> None:
         """Process a single comparison in a thread with its own database session"""
         try:
@@ -154,12 +158,12 @@ class DetectionIntegrationService:
             logger.error(f"Failed async comparison between {submission1_id} and {submission2_id}: {str(e)}")
 
     def _process_single_comparison_with_repos(
-            self,
-            similarity_record,
-            submission1: Submission,
-            submission2: Submission,
-            submission_repo: SubmissionRepository,
-            similarity_repo: SubmissionSimilarityRepository,
+        self,
+        similarity_record,
+        submission1: Submission,
+        submission2: Submission,
+        submission_repo: SubmissionRepository,
+        similarity_repo: SubmissionSimilarityRepository,
     ) -> None:
         """Process comparison with provided repositories (for thread safety)"""
         start_time = time.time()
@@ -275,7 +279,7 @@ class DetectionIntegrationService:
                         "tokens_count": {"submission1": len(tokens1), "submission2": len(tokens2)},
                         "processed_tokens_count": {
                             "submission1": similarity_result["tokens1_length"],
-                            "submission2": similarity_result["tokens2_length"]
+                            "submission2": similarity_result["tokens2_length"],
                         },
                         "files_count": {
                             "submission1": len(repo1_compatible_files),
@@ -492,7 +496,7 @@ class DetectionIntegrationService:
                         "tokens_count": {"submission1": len(tokens1), "submission2": len(tokens2)},
                         "processed_tokens_count": {
                             "submission1": similarity_result["tokens1_length"],
-                            "submission2": similarity_result["tokens2_length"]
+                            "submission2": similarity_result["tokens2_length"],
                         },
                         "files_count": {
                             "submission1": len(repo1_compatible_files),
@@ -505,7 +509,7 @@ class DetectionIntegrationService:
                             "flow_similarity": similarity_result["flow_similarity"],
                             "operation_similarity": similarity_result["operation_similarity"],
                             "type_similarity": similarity_result["type_similarity"],
-                        }
+                        },
                     },
                     # "shared_blocks": {
                     #     "blocks": shared_blocks_result['shared_blocks'],
@@ -519,8 +523,10 @@ class DetectionIntegrationService:
                 # Update the similarity record with results
                 self.similarity_repository.update_results(similarity_record.id, results)
 
-                logger.info(f"Successfully processed comparison between {submission1.id} and {submission2.id} "
-                            f"with overall similarity: {similarity_result['overall_similarity']:.3f}")
+                logger.info(
+                    f"Successfully processed comparison between {submission1.id} and {submission2.id} "
+                    f"with overall similarity: {similarity_result['overall_similarity']:.3f}"
+                )
 
             finally:
                 # Clean up temporary directories
@@ -536,13 +542,13 @@ class DetectionIntegrationService:
             raise
 
     def _detect_shared_blocks_multifile(
-            self,
-            repo1_path: Path,
-            repo2_path: Path,
-            repo1_files: List[Path],
-            repo2_files: List[Path],
-            submission1: Submission,
-            submission2: Submission,
+        self,
+        repo1_path: Path,
+        repo2_path: Path,
+        repo1_files: List[Path],
+        repo2_files: List[Path],
+        submission1: Submission,
+        submission2: Submission,
     ) -> Dict[str, Any]:
         """
         Optimized detection of shared code blocks between multi-file submissions.
@@ -859,7 +865,7 @@ class DetectionIntegrationService:
             raise DatabaseException(f"Failed to get project step statistics: {str(e)}")
 
     def get_high_similarity_alerts(
-            self, project_uuid: UUID, project_step_uuid: UUID, threshold: float = 0.7
+        self, project_uuid: UUID, project_step_uuid: UUID, threshold: float = 0.7
     ) -> List[dict]:
         """Get high similarity alerts for a project step"""
         try:

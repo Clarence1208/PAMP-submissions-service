@@ -44,7 +44,7 @@ class SubmissionSimilarityRepository:
                 .where(
                     or_(
                         SubmissionSimilarity.submission_id == submission_id,
-                        SubmissionSimilarity.compared_submission_id == submission_id
+                        SubmissionSimilarity.compared_submission_id == submission_id,
                     )
                 )
                 .order_by(SubmissionSimilarity.overall_similarity.desc())
@@ -139,7 +139,6 @@ class SubmissionSimilarityRepository:
             similarity.type_sequence_similarity = results.get("type_sequence_similarity", 0.0)
             similarity.flow_similarity = results.get("flow_similarity", 0.0)
             similarity.operation_similarity = results.get("operation_similarity", 0.0)
-
 
             # Update detailed results
             similarity.similarity_details = results.get("similarity_details")
