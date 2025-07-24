@@ -321,48 +321,48 @@ class SimilarityDetectionService:
         # 6. CALCULATE OVERALL SIMILARITY (weighted combination)
         # Dynamically adjust weights based on available metrics (skip heavy calculations for large sequences)
         base_weights = {
-            'jaccard': 0.25,
-            'structural': 0.30,
-            'type_sequence': 0.20,
-            'flow': 0.15,
-            'operation': 0.05,
-            'type': 0.05
+            "jaccard": 0.25,
+            "structural": 0.30,
+            "type_sequence": 0.20,
+            "flow": 0.15,
+            "operation": 0.05,
+            "type": 0.05,
         }
-        
+
         # Check which heavy metrics were skipped (return 0.0)
         skipped_metrics = []
         if structural_similarity == 0.0 and (len(seq1) > 1000 or len(seq2) > 1000):
-            skipped_metrics.append('structural')
+            skipped_metrics.append("structural")
         if type_sequence_similarity == 0.0 and (len(types1) > 1000 or len(types2) > 1000):
-            skipped_metrics.append('type_sequence')
+            skipped_metrics.append("type_sequence")
         if flow_similarity == 0.0:
             flow1 = self._extract_logical_flow(sim_tokens1)
             flow2 = self._extract_logical_flow(sim_tokens2)
             if len(flow1) > 1000 or len(flow2) > 1000:
-                skipped_metrics.append('flow')
+                skipped_metrics.append("flow")
         if operation_similarity == 0.0:
             ops1 = self._extract_operations(sim_tokens1)
             ops2 = self._extract_operations(sim_tokens2)
             if len(ops1) > 1000 or len(ops2) > 1000:
-                skipped_metrics.append('operation')
-        
+                skipped_metrics.append("operation")
+
         # Redistribute weights of skipped metrics to remaining metrics
         total_skipped_weight = sum(base_weights[metric] for metric in skipped_metrics)
         remaining_metrics = [k for k in base_weights.keys() if k not in skipped_metrics]
-        
+
         if total_skipped_weight > 0 and remaining_metrics:
             # Distribute skipped weight proportionally among remaining metrics
             weight_bonus = total_skipped_weight / len(remaining_metrics)
             for metric in remaining_metrics:
                 base_weights[metric] += weight_bonus
-        
+
         overall_similarity = (
-            jaccard_similarity * base_weights['jaccard']
-            + structural_similarity * base_weights['structural']
-            + type_sequence_similarity * base_weights['type_sequence']
-            + flow_similarity * base_weights['flow']
-            + operation_similarity * base_weights['operation']
-            + type_similarity * base_weights['type']
+            jaccard_similarity * base_weights["jaccard"]
+            + structural_similarity * base_weights["structural"]
+            + type_sequence_similarity * base_weights["type_sequence"]
+            + flow_similarity * base_weights["flow"]
+            + operation_similarity * base_weights["operation"]
+            + type_similarity * base_weights["type"]
         ) * length_penalty  # Apply length penalty
 
         return {
@@ -721,43 +721,37 @@ class SimilarityDetectionService:
         length_penalty = 1.0 if length_ratio > 0.5 else (0.8 if length_ratio > 0.3 else 0.6)
 
         # Dynamically adjust weights based on available metrics (skip heavy calculations for large functions)
-        base_weights = {
-            'structural': 0.4,
-            'type_sequence': 0.25,
-            'flow': 0.2,
-            'operation': 0.1,
-            'type_set': 0.05
-        }
-        
+        base_weights = {"structural": 0.4, "type_sequence": 0.25, "flow": 0.2, "operation": 0.1, "type_set": 0.05}
+
         # Check which heavy metrics were skipped (return 0.0)
         skipped_metrics = []
         if structural_similarity == 0.0 and (len(seq1) > 1000 or len(seq2) > 1000):
-            skipped_metrics.append('structural')
+            skipped_metrics.append("structural")
         if type_sequence_similarity == 0.0 and (len(types1) > 1000 or len(types2) > 1000):
-            skipped_metrics.append('type_sequence')
+            skipped_metrics.append("type_sequence")
         if flow_similarity == 0.0:
             if len(flow1) > 1000 or len(flow2) > 1000:
-                skipped_metrics.append('flow')
+                skipped_metrics.append("flow")
         if operation_similarity == 0.0:
             if len(ops1) > 1000 or len(ops2) > 1000:
-                skipped_metrics.append('operation')
-        
+                skipped_metrics.append("operation")
+
         # Redistribute weights of skipped metrics to remaining metrics
         total_skipped_weight = sum(base_weights[metric] for metric in skipped_metrics)
         remaining_metrics = [k for k in base_weights.keys() if k not in skipped_metrics]
-        
+
         if total_skipped_weight > 0 and remaining_metrics:
             # Distribute skipped weight proportionally among remaining metrics
             weight_bonus = total_skipped_weight / len(remaining_metrics)
             for metric in remaining_metrics:
                 base_weights[metric] += weight_bonus
-        
+
         similarity_score = (
-            structural_similarity * base_weights['structural']
-            + type_sequence_similarity * base_weights['type_sequence']
-            + flow_similarity * base_weights['flow']
-            + operation_similarity * base_weights['operation']
-            + type_set_similarity * base_weights['type_set']
+            structural_similarity * base_weights["structural"]
+            + type_sequence_similarity * base_weights["type_sequence"]
+            + flow_similarity * base_weights["flow"]
+            + operation_similarity * base_weights["operation"]
+            + type_set_similarity * base_weights["type_set"]
         ) * length_penalty  # Apply length penalty
 
         return {
@@ -941,7 +935,7 @@ class SimilarityDetectionService:
         # For small sequences, use the regular method
         if len(seq1) <= 10000 and len(seq2) <= 10000:
             return self._sequence_similarity(seq1, seq2)
-        
+
         # For large sequences, skip calculation to avoid performance issues
         logger.debug(f"Skipping sequence similarity for large sequences: {len(seq1)} vs {len(seq2)} elements")
         return 0.0
