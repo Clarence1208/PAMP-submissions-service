@@ -101,6 +101,12 @@ class S3Fetcher:
                     if self._is_zip_file(temp_file_path):
                         self._extract_zip(temp_file_path, extract_path)
                         logger.debug(f"Extracted ZIP file to: {extract_path}")
+                        
+                        # Check if we need to use a nested directory as the project root
+                        project_root = self._get_project_root_path(extract_path)
+                        if project_root != extract_path:
+                            logger.info(f"Using nested directory as project root: {project_root}")
+                            extract_path = project_root
                     else:
                         # If not a zip, just copy the file
                         target_file = extract_path / Path(object_key).name
@@ -252,3 +258,34 @@ class S3Fetcher:
         except Exception as e:
             logger.error(f"Failed to extract ZIP file {zip_path}: {str(e)}")
             raise Exception(f"Failed to extract ZIP file: {str(e)}")
+
+    def _get_project_root_path(self, extract_path: Path) -> Path:
+        """
+        Get the actual project root path, handling nested directory structures.
+        
+        If there's a single subdirectory, use that as the project root instead
+        of the extraction directory.
+        
+        Args:
+            extract_path: Path to the extracted content directory
+            
+        Returns:
+            Path to use as the project root
+        """
+        try:
+            # Get all items in the extraction directory (exclude hidden files)
+            items = [item for item in extract_path.iterdir() if not item.name.startswith('.')]
+            
+            # If there's exactly one item and it's a directory, use it as the project root
+            if len(items) == 1 and items[0].is_dir():
+                nested_dir = items[0]
+                logger.debug(f"Found single nested directory, using as project root: {nested_dir}")
+                return nested_dir
+            else:
+                logger.debug(f"Using extraction directory as project root: {extract_path} (contains {len(items)} items)")
+                return extract_path
+                
+        except Exception as e:
+            # If anything goes wrong, fall back to the extraction path
+            logger.warning(f"Error determining project root path in {extract_path}: {e}")
+            return extract_path
