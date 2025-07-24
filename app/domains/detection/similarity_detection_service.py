@@ -298,20 +298,20 @@ class SimilarityDetectionService:
         # 1. STRUCTURAL SEQUENCE SIMILARITY
         seq1 = self._create_structural_sequence(sim_tokens1)
         seq2 = self._create_structural_sequence(sim_tokens2)
-        structural_similarity = self._sequence_similarity(seq1, seq2)
+        structural_similarity = self._sequence_similarity_optimized(seq1, seq2)
 
         # 2. TOKEN TYPE SEQUENCE SIMILARITY
-        type_sequence_similarity = self._sequence_similarity(types1, types2)
+        type_sequence_similarity = self._sequence_similarity_optimized(types1, types2)
 
         # 3. LOGICAL FLOW SIMILARITY (if-else, loops, returns)
         flow1 = self._extract_logical_flow(sim_tokens1)
         flow2 = self._extract_logical_flow(sim_tokens2)
-        flow_similarity = self._sequence_similarity(flow1, flow2)
+        flow_similarity = self._sequence_similarity_optimized(flow1, flow2)
 
         # 4. OPERATION SIMILARITY
         ops1 = self._extract_operations(sim_tokens1)
         ops2 = self._extract_operations(sim_tokens2)
-        operation_similarity = self._sequence_similarity(ops1, ops2)
+        operation_similarity = self._sequence_similarity_optimized(ops1, ops2)
 
         # 5. LENGTH PENALTY for very different file sizes
         len1, len2 = len(sim_tokens1), len(sim_tokens2)
@@ -319,14 +319,50 @@ class SimilarityDetectionService:
         length_penalty = 1.0 if length_ratio > 0.5 else (0.9 if length_ratio > 0.3 else 0.8)
 
         # 6. CALCULATE OVERALL SIMILARITY (weighted combination)
-        # For file-level comparison, adjust weights compared to function-level
+        # Dynamically adjust weights based on available metrics (skip heavy calculations for large sequences)
+        base_weights = {
+            'jaccard': 0.25,
+            'structural': 0.30,
+            'type_sequence': 0.20,
+            'flow': 0.15,
+            'operation': 0.05,
+            'type': 0.05
+        }
+        
+        # Check which heavy metrics were skipped (return 0.0)
+        skipped_metrics = []
+        if structural_similarity == 0.0 and (len(seq1) > 1000 or len(seq2) > 1000):
+            skipped_metrics.append('structural')
+        if type_sequence_similarity == 0.0 and (len(types1) > 1000 or len(types2) > 1000):
+            skipped_metrics.append('type_sequence')
+        if flow_similarity == 0.0:
+            flow1 = self._extract_logical_flow(sim_tokens1)
+            flow2 = self._extract_logical_flow(sim_tokens2)
+            if len(flow1) > 1000 or len(flow2) > 1000:
+                skipped_metrics.append('flow')
+        if operation_similarity == 0.0:
+            ops1 = self._extract_operations(sim_tokens1)
+            ops2 = self._extract_operations(sim_tokens2)
+            if len(ops1) > 1000 or len(ops2) > 1000:
+                skipped_metrics.append('operation')
+        
+        # Redistribute weights of skipped metrics to remaining metrics
+        total_skipped_weight = sum(base_weights[metric] for metric in skipped_metrics)
+        remaining_metrics = [k for k in base_weights.keys() if k not in skipped_metrics]
+        
+        if total_skipped_weight > 0 and remaining_metrics:
+            # Distribute skipped weight proportionally among remaining metrics
+            weight_bonus = total_skipped_weight / len(remaining_metrics)
+            for metric in remaining_metrics:
+                base_weights[metric] += weight_bonus
+        
         overall_similarity = (
-            jaccard_similarity * 0.25  # Signature-based similarity
-            + structural_similarity * 0.30  # Overall code structure
-            + type_sequence_similarity * 0.20  # Token sequence patterns
-            + flow_similarity * 0.15  # Control flow logic
-            + operation_similarity * 0.05  # Mathematical operations
-            + type_similarity * 0.05  # Basic type overlap
+            jaccard_similarity * base_weights['jaccard']
+            + structural_similarity * base_weights['structural']
+            + type_sequence_similarity * base_weights['type_sequence']
+            + flow_similarity * base_weights['flow']
+            + operation_similarity * base_weights['operation']
+            + type_similarity * base_weights['type']
         ) * length_penalty  # Apply length penalty
 
         return {
@@ -656,13 +692,13 @@ class SimilarityDetectionService:
         seq1 = self._create_structural_sequence(sim_tokens1)
         seq2 = self._create_structural_sequence(sim_tokens2)
 
-        structural_similarity = self._sequence_similarity(seq1, seq2)
+        structural_similarity = self._sequence_similarity_optimized(seq1, seq2)
 
         #  TOKEN TYPE PATTERN SIMILARITY
         types1 = [token["type"] for token in sim_tokens1]
         types2 = [token["type"] for token in sim_tokens2]
 
-        type_sequence_similarity = self._sequence_similarity(types1, types2)
+        type_sequence_similarity = self._sequence_similarity_optimized(types1, types2)
 
         # Also check set-based type similarity, for different order but same operations
         common_types = set(types1) & set(types2)
@@ -672,24 +708,56 @@ class SimilarityDetectionService:
         #  LOGICAL FLOW SIMILARITY (if-else, loops, returns)
         flow1 = self._extract_logical_flow(sim_tokens1)
         flow2 = self._extract_logical_flow(sim_tokens2)
-        flow_similarity = self._sequence_similarity(flow1, flow2)
+        flow_similarity = self._sequence_similarity_optimized(flow1, flow2)
 
         #  OPERATION SIMILARITY
         ops1 = self._extract_operations(sim_tokens1)
         ops2 = self._extract_operations(sim_tokens2)
-        operation_similarity = self._sequence_similarity(ops1, ops2)
+        operation_similarity = self._sequence_similarity_optimized(ops1, ops2)
 
         # Add penalty for very different function lengths
         len1, len2 = len(sim_tokens1), len(sim_tokens2)
         length_ratio = min(len1, len2) / max(len1, len2) if max(len1, len2) > 0 else 0.0
         length_penalty = 1.0 if length_ratio > 0.5 else (0.8 if length_ratio > 0.3 else 0.6)
 
+        # Dynamically adjust weights based on available metrics (skip heavy calculations for large functions)
+        base_weights = {
+            'structural': 0.4,
+            'type_sequence': 0.25,
+            'flow': 0.2,
+            'operation': 0.1,
+            'type_set': 0.05
+        }
+        
+        # Check which heavy metrics were skipped (return 0.0)
+        skipped_metrics = []
+        if structural_similarity == 0.0 and (len(seq1) > 1000 or len(seq2) > 1000):
+            skipped_metrics.append('structural')
+        if type_sequence_similarity == 0.0 and (len(types1) > 1000 or len(types2) > 1000):
+            skipped_metrics.append('type_sequence')
+        if flow_similarity == 0.0:
+            if len(flow1) > 1000 or len(flow2) > 1000:
+                skipped_metrics.append('flow')
+        if operation_similarity == 0.0:
+            if len(ops1) > 1000 or len(ops2) > 1000:
+                skipped_metrics.append('operation')
+        
+        # Redistribute weights of skipped metrics to remaining metrics
+        total_skipped_weight = sum(base_weights[metric] for metric in skipped_metrics)
+        remaining_metrics = [k for k in base_weights.keys() if k not in skipped_metrics]
+        
+        if total_skipped_weight > 0 and remaining_metrics:
+            # Distribute skipped weight proportionally among remaining metrics
+            weight_bonus = total_skipped_weight / len(remaining_metrics)
+            for metric in remaining_metrics:
+                base_weights[metric] += weight_bonus
+        
         similarity_score = (
-            structural_similarity * 0.4  # Most important: overall structure
-            + type_sequence_similarity * 0.25  # Token sequence patterns
-            + flow_similarity * 0.2  # Control flow logic
-            + operation_similarity * 0.1  # Mathematical operations
-            + type_set_similarity * 0.05  # Basic type overlap
+            structural_similarity * base_weights['structural']
+            + type_sequence_similarity * base_weights['type_sequence']
+            + flow_similarity * base_weights['flow']
+            + operation_similarity * base_weights['operation']
+            + type_set_similarity * base_weights['type_set']
         ) * length_penalty  # Apply length penalty
 
         return {
@@ -867,3 +935,13 @@ class SimilarityDetectionService:
             return 1.0
 
         return lcs_length / max_length
+
+    def _sequence_similarity_optimized(self, seq1: List[str], seq2: List[str]) -> float:
+        """Calculate similarity between two sequences, skipping heavy calculations for large sequences."""
+        # For small sequences, use the regular method
+        if len(seq1) <= 10000 and len(seq2) <= 10000:
+            return self._sequence_similarity(seq1, seq2)
+        
+        # For large sequences, skip calculation to avoid performance issues
+        logger.debug(f"Skipping sequence similarity for large sequences: {len(seq1)} vs {len(seq2)} elements")
+        return 0.0
